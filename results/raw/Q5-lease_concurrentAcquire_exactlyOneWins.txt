@@ -1,0 +1,2 @@
+=== lease_concurrentAcquire_exactlyOneWins() conv=race-4
+동시 획득 300회: 둘 다 성공 0, 둘 다 실패 0

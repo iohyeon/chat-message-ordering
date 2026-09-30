@@ -1,0 +1,11 @@
+=== b_workerLagging_leaseEq_logReplay_leavesHole() topic=chat-log-91b3e147 conv=conv-91b3e147
+A lease 획득 epoch=5 nextSeq=101
+B가 로그 replay로 본 마지막 seq=102
+B lease 획득 epoch=6 nextSeq=103
+-- 지연된 워커의 처리
+   offset=0 record seq=101 epoch=5 body=A-101 -> REJECTED_EPOCH
+   offset=1 record seq=102 epoch=5 body=A-102 -> REJECTED_EPOCH
+   offset=2 record seq=103 epoch=6 body=B-103 -> STORED
+-- message 테이블
+   seq=100 epoch=4 body=seed-100
+   seq=103 epoch=6 body=B-103

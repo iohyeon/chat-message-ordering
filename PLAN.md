@@ -2,6 +2,19 @@
 
 README의 실험 6개를 어떤 순서와 구조로 만드는지 적은 문서입니다.
 
+## 상태
+
+완료. 실험 6개의 결과는 다음 문서에 있습니다. 아래 계획은 작업 전에 쓴 것이고, 실제 테스트와 측정 클래스 이름과 구성은 결과 문서의 "실행 명령" 절을 따릅니다.
+
+| 실험 | 결과 문서 |
+| --- | --- |
+| Q1 멱등 producer | [results/Q1.md](results/Q1.md) |
+| Q2 트랜잭션 fencing | [results/Q2.md](results/Q2.md) |
+| Q3 abort 레코드 가시성 | [results/Q3.md](results/Q3.md) |
+| Q4 기동 순서 | [results/Q4.md](results/Q4.md) |
+| Q5 저장소 fencing | [results/Q5.md](results/Q5.md) |
+| Q6 비용 | [results/Q6.md](results/Q6.md) |
+
 ## 확인할 질문과 지금의 예상
 
 | 실험 | 질문 | 예상 | 예상의 근거 |
@@ -42,9 +55,9 @@ src/test/java/lab/
 
 **Q4.** A가 트랜잭션으로 seq 101, 102를 보내고 커밋 직전에 멈춥니다. B가 replay로 마지막 커밋 seq(100)를 확인하고, `initTransactions()` 전에 A를 깨워 커밋시킵니다. B가 seq 101부터 수락합니다. `read_committed` 소비자에게 seq 101이 두 번 보이는지 확인하고, 순서를 바로잡아(`initTransactions()` 먼저) 한 번만 보이는지도 확인합니다.
 
-**Q5.** 트랜잭션 없이 멱등 producer만 쓰고, 레코드에 lease epoch를 싣습니다. lease가 A(epoch 5)에서 B(epoch 6)로 넘어간 뒤 저장 워커가 README의 조건부 `INSERT` 로 씁니다. 로그에는 A의 레코드가 있지만 message 테이블에는 B의 레코드만 있는지, A가 lease를 잃기 전에 쓴 레코드는 정상으로 들어가는지 확인합니다.
+**Q5.** 트랜잭션 없이 멱등 producer만 쓰고, 레코드에 lease epoch를 싣습니다. lease가 A(epoch 5)에서 B(epoch 6)로 넘어간 뒤 저장 워커가 lease 테이블의 epoch와 비교하는 조건부 `INSERT` 로 씁니다(SQL은 [results/Q5.md](results/Q5.md)의 `LEASE_EQ`). 로그에는 A의 레코드가 있지만 message 테이블에는 B의 레코드만 있는지, A가 lease를 잃기 전에 쓴 레코드는 정상으로 들어가는지 확인합니다.
 
-**Q6.** README의 측정 표를 따릅니다.
+**Q6.** `read_committed` 전달 지연, 트랜잭션 처리량, 조건부 `INSERT` 비용, 담당 교체 공백을 잽니다. 측정 조건은 [results/Q6.md](results/Q6.md)에 있습니다.
 
 ## 결과를 쓰는 곳
 
@@ -58,4 +71,4 @@ src/test/java/lab/
 2. Q1, Q2, Q3
 3. Q4
 4. Q5
-5. Q6 측정, README의 결과표 작성
+5. Q6 측정, 결과 문서와 README 작성

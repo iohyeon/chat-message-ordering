@@ -1,0 +1,5 @@
+postgres,mode,iterations,a_stored,anomalies,seconds
+fsync-on,LEASE_EQ,20000,19880,108,40.4
+fsync-on,LEASE_EQ_FOR_SHARE,20000,7492,0,40.9
+fsync-off,LEASE_EQ,20000,16554,1,31.0
+fsync-off,LEASE_EQ_FOR_SHARE,20000,5491,0,31.6

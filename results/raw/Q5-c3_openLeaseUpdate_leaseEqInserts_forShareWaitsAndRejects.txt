@@ -1,0 +1,3 @@
+=== c3_openLeaseUpdate_leaseEqInserts_forShareWaitsAndRejects() conv=race-7
+LEASE_EQ: B epoch=OptionalLong[6](커밋 전), W 막힘=false 대기=-, B 커밋 뒤 W 삽입 행 수=1
+LEASE_EQ_FOR_SHARE: B epoch=OptionalLong[6](커밋 전), W 막힘=true 대기=Lock/transactionid query=INSERT INTO message (conversation_id, conversation_seq, epoc, B 커밋 뒤 W 삽입 행 수=0

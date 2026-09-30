@@ -1,1 +1,1 @@
-rootProject.name = "kafka-fencing-lab"
+rootProject.name = "chat-message-ordering"

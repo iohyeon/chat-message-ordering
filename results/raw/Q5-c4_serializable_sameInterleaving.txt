@@ -1,0 +1,8 @@
+=== c4_serializable_sameInterleaving() conv=race-1
+   W insert A-101 -> 1
+   B acquire blocked=false epoch=OptionalLong[6]
+   B maxSeq=100
+   B commit -> ok
+   W commit -> 40001 ERROR: could not serialize access due to read/write dependencies among transactions
+   lease epoch=6
+   seq=100 epoch=4 body=seed-100

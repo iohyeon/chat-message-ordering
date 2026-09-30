@@ -1,0 +1,15 @@
+=== d_zombieAckedByBrokerButRejectedByStore() topic=chat-log-4422f8ea conv=conv-4422f8ea
+A lease 획득 epoch=5 nextSeq=101
+B lease 획득 epoch=6 nextSeq=102
+-- 처리
+   offset=1 record seq=102 epoch=6 body=B-102 -> STORED
+   offset=2 record seq=102 epoch=5 body=A-102 -> REJECTED_EPOCH
+   offset=3 record seq=103 epoch=5 body=A-103 -> REJECTED_EPOCH
+   offset=4 record seq=104 epoch=5 body=A-104 -> REJECTED_EPOCH
+   offset=5 record seq=103 epoch=6 body=B-103 -> STORED
+-- message 테이블
+   seq=100 epoch=4 body=seed-100
+   seq=101 epoch=5 body=A-101
+   seq=102 epoch=6 body=B-102
+   seq=103 epoch=6 body=B-103
+A가 사용자에게 성공으로 응답한 것: 4건, 그중 저장되지 않은 것: [ChatRecord[conversationId=conv-4422f8ea, seq=102, epoch=5, body=A-102, marker=false], ChatRecord[conversationId=conv-4422f8ea, seq=103, epoch=5, body=A-103, marker=false], ChatRecord[conversationId=conv-4422f8ea, seq=104, epoch=5, body=A-104, marker=false]]

@@ -1,0 +1,9 @@
+=== c5_autocommitRace_counts() conv=race-5
+slowMs=0 mode=LEASE_EQ 반복=2000 A저장=1583 A거부=417 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
+slowMs=0 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=518 A거부=1482 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
+slowMs=5 mode=LEASE_EQ 반복=2000 A저장=1739 A거부=261 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1737
+slowMs=5 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=586 A거부=1414 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
+RESULT slowMs=0 mode=LEASE_EQ 반복=2000 A저장=1583 A거부=417 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
+RESULT slowMs=0 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=518 A거부=1482 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
+RESULT slowMs=5 mode=LEASE_EQ 반복=2000 A저장=1739 A거부=261 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1737
+RESULT slowMs=5 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=586 A거부=1414 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0

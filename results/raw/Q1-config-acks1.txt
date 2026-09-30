@@ -1,0 +1,2 @@
+  baseOffset=0 lastOffset=0 baseSequence=-1 lastSequence=-1 producerId=-1 producerEpoch=-1 isTransactional=false isControl=false
+      | offset=0 sequence=-1 payload: seq=101 writer=acks1

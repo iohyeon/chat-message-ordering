@@ -1,0 +1,105 @@
+
+=== 클라이언트 기본값 (kafka-clients 4.3.1 ConfigDef) ===
+  enable.idempotence 기본값 = true
+  acks 기본값 = all
+  isolation.level 기본값 = read_uncommitted
+
+=== A: seq 101, 102 전송 후 멈춤 ===
+  A send(101) Future.get() -> 성공 (124ms) offset=0
+  A send(101) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | writer-A]
+  A send(102) Future.get() -> 성공 (9ms) offset=1
+  A send(102) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | writer-A]
+  A 클라이언트 producerIdAndEpoch = (producerId=0, epoch=0)
+
+=== B: 새 멱등 producer로 seq 101, 102 전송 ===
+  B send(101) Future.get() -> 성공 (8ms) offset=2
+  B send(101) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | writer-B]
+  B send(102) Future.get() -> 성공 (7ms) offset=3
+  B send(102) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | writer-B]
+  B 클라이언트 producerIdAndEpoch = (producerId=1, epoch=0)
+
+=== A 깨어남 ===
+  A send(103) 깨어난 뒤 Future.get() -> 성공 (8ms) offset=4
+  A send(103) 깨어난 뒤 callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | writer-A]
+  A 클라이언트 producerIdAndEpoch(깨어난 뒤) = (producerId=0, epoch=0)
+
+=== 파티션의 producer 상태 (Admin.describeProducers) ===
+  [producerId=0 producerEpoch=0 lastSequence=2 currentTransactionStartOffset=OptionalLong.empty] [producerId=1 producerEpoch=0 lastSequence=1 currentTransactionStartOffset=OptionalLong.empty]
+
+=== read_uncommitted 소비자 ===
+  offset=0 value=seq=101 writer=A
+  offset=1 value=seq=102 writer=A
+  offset=2 value=seq=101 writer=B
+  offset=3 value=seq=102 writer=B
+  offset=4 value=seq=103 writer=A
+
+=== read_committed 소비자 ===
+  offset=0 value=seq=101 writer=A
+  offset=1 value=seq=102 writer=A
+  offset=2 value=seq=101 writer=B
+  offset=3 value=seq=102 writer=B
+  offset=4 value=seq=103 writer=A
+
+=== kafka-dump-log 요약 ===
+  baseOffset=0 lastOffset=0 baseSequence=0 lastSequence=0 producerId=0 producerEpoch=0 isTransactional=false isControl=false
+      | offset=0 sequence=0 payload: seq=101 writer=A
+  baseOffset=1 lastOffset=1 baseSequence=1 lastSequence=1 producerId=0 producerEpoch=0 isTransactional=false isControl=false
+      | offset=1 sequence=1 payload: seq=102 writer=A
+  baseOffset=2 lastOffset=2 baseSequence=0 lastSequence=0 producerId=1 producerEpoch=0 isTransactional=false isControl=false
+      | offset=2 sequence=0 payload: seq=101 writer=B
+  baseOffset=3 lastOffset=3 baseSequence=1 lastSequence=1 producerId=1 producerEpoch=0 isTransactional=false isControl=false
+      | offset=3 sequence=1 payload: seq=102 writer=B
+  baseOffset=4 lastOffset=4 baseSequence=2 lastSequence=2 producerId=0 producerEpoch=0 isTransactional=false isControl=false
+      | offset=4 sequence=2 payload: seq=103 writer=A
+
+=== kafka-dump-log 원문 ===
+Dumping /tmp/kafka-logs/q1-chat-log-0/00000000000000000000.log
+Log starting offset: 0
+baseOffset: 0 lastOffset: 0 count: 1 baseSequence: 0 lastSequence: 0 producerId: 0 producerEpoch: 0 partitionLeaderEpoch: 0 isTransactional: false isControl: false deleteHorizonMs: OptionalLong.empty position: 0 CreateTime: 1790738706234 size: 107 magic: 2 compresscodec: none crc: 2127270549 isvalid: true
+| offset: 0 CreateTime: 1790738706234 keySize: 6 valueSize: 16 sequence: 0 headerKeys: [seq,writer] key: conv-1 payload: seq=101 writer=A
+baseOffset: 1 lastOffset: 1 count: 1 baseSequence: 1 lastSequence: 1 producerId: 0 producerEpoch: 0 partitionLeaderEpoch: 0 isTransactional: false isControl: false deleteHorizonMs: OptionalLong.empty position: 107 CreateTime: 1790738706360 size: 107 magic: 2 compresscodec: none crc: 1882618816 isvalid: true
+| offset: 1 CreateTime: 1790738706360 keySize: 6 valueSize: 16 sequence: 1 headerKeys: [seq,writer] key: conv-1 payload: seq=102 writer=A
+baseOffset: 2 lastOffset: 2 count: 1 baseSequence: 0 lastSequence: 0 producerId: 1 producerEpoch: 0 partitionLeaderEpoch: 0 isTransactional: false isControl: false deleteHorizonMs: OptionalLong.empty position: 214 CreateTime: 1790738706373 size: 107 magic: 2 compresscodec: none crc: 785790158 isvalid: true
+| offset: 2 CreateTime: 1790738706373 keySize: 6 valueSize: 16 sequence: 0 headerKeys: [seq,writer] key: conv-1 payload: seq=101 writer=B
+baseOffset: 3 lastOffset: 3 count: 1 baseSequence: 1 lastSequence: 1 producerId: 1 producerEpoch: 0 partitionLeaderEpoch: 0 isTransactional: false isControl: false deleteHorizonMs: OptionalLong.empty position: 321 CreateTime: 1790738706382 size: 107 magic: 2 compresscodec: none crc: 4087323214 isvalid: true
+| offset: 3 CreateTime: 1790738706382 keySize: 6 valueSize: 16 sequence: 1 headerKeys: [seq,writer] key: conv-1 payload: seq=102 writer=B
+baseOffset: 4 lastOffset: 4 count: 1 baseSequence: 2 lastSequence: 2 producerId: 0 producerEpoch: 0 partitionLeaderEpoch: 0 isTransactional: false isControl: false deleteHorizonMs: OptionalLong.empty position: 428 CreateTime: 1790738706390 size: 107 magic: 2 compresscodec: none crc: 2432671537 isvalid: true
+| offset: 4 CreateTime: 1790738706390 keySize: 6 valueSize: 16 sequence: 2 headerKeys: [seq,writer] key: conv-1 payload: seq=103 writer=A
+
+
+=== 클라이언트 로그 (producer ID 할당) ===
+  INFO [Test worker] KafkaProducer - [Producer clientId=writer-A] Instantiated an idempotent producer.
+  INFO [Test worker] KafkaProducer - [Producer clientId=writer-B] Instantiated an idempotent producer.
+  INFO [kafka-producer-network-thread | writer-A] TransactionManager - [Producer clientId=writer-A] ProducerId set to 0 with epoch 0
+  INFO [kafka-producer-network-thread | writer-B] TransactionManager - [Producer clientId=writer-B] ProducerId set to 1 with epoch 0
+
+=== 브로커 요청 로그: InitProducerId ===
+  2026-09-30 03:25:06,157 INIT_PRODUCER_ID v5 clientId=writer-A
+      request={"transactionalId":null,"transactionTimeoutMs":2147483647,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":14,"producerId":-1,"producerEpoch":-1}
+  2026-09-30 03:25:06,157 INIT_PRODUCER_ID v5 clientId=writer-B
+      request={"transactionalId":null,"transactionTimeoutMs":2147483647,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":14,"producerId":-1,"producerEpoch":-1}
+  2026-09-30 03:25:06,266 INIT_PRODUCER_ID v5 clientId=writer-A
+      request={"transactionalId":null,"transactionTimeoutMs":2147483647,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":0,"producerEpoch":0}
+  2026-09-30 03:25:06,268 INIT_PRODUCER_ID v5 clientId=writer-B
+      request={"transactionalId":null,"transactionTimeoutMs":2147483647,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":1,"producerEpoch":0}
+
+=== 브로커 요청 로그: Produce ===
+  2026-09-30 03:25:06,277 PRODUCE v13 clientId=writer-A
+      request={"transactionalId":null,"acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":0,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+  2026-09-30 03:25:06,288 PRODUCE v13 clientId=writer-A
+      request={"transactionalId":null,"acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":1,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+  2026-09-30 03:25:06,302 PRODUCE v13 clientId=writer-B
+      request={"transactionalId":null,"acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":2,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+  2026-09-30 03:25:06,309 PRODUCE v13 clientId=writer-B
+      request={"transactionalId":null,"acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":3,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+  2026-09-30 03:25:06,318 PRODUCE v13 clientId=writer-A
+      request={"transactionalId":null,"acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"aElyMgliQJGK_tL3lWbpBA","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":4,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}

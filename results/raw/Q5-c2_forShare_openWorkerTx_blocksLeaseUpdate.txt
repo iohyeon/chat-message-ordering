@@ -1,0 +1,6 @@
+=== c2_forShare_openWorkerTx_blocksLeaseUpdate() conv=race-6
+B: lease UPDATE 막힘=true 대기=Lock/transactionid query=UPDATE conversation_owner SET epoch = epoch + 1, o
+W 커밋 뒤 B epoch=OptionalLong[6] 마지막 seq=101 B-102 삽입=1
+   seq=100 epoch=4 body=seed-100
+   seq=101 epoch=5 body=A-101
+   seq=102 epoch=6 body=B-102

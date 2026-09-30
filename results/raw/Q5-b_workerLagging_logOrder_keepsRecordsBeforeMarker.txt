@@ -1,0 +1,18 @@
+=== b_workerLagging_logOrder_keepsRecordsBeforeMarker() topic=chat-log-36a37954 conv=conv-36a37954
+A lease 획득 epoch=5 nextSeq=101
+-- 표시까지 처리
+   offset=0 record seq=101 epoch=5 body=A-101 -> STORED
+   offset=1 record seq=102 epoch=5 body=A-102 -> STORED
+   offset=2 record seq=103 epoch=5 body=A-103 -> STORED
+   offset=3 MARKER seq=-1 epoch=6 body= -> null
+표시 offset=3, B가 저장소에서 본 마지막 seq=103
+-- 표시 뒤 처리
+   offset=4 record seq=104 epoch=6 body=B-104 -> STORED
+   offset=5 record seq=104 epoch=5 body=A-104 -> REJECTED_EPOCH
+-- message 테이블
+   seq=100 epoch=4 body=seed-100
+   seq=101 epoch=5 body=A-101
+   seq=102 epoch=5 body=A-102
+   seq=103 epoch=5 body=A-103
+   seq=104 epoch=6 body=B-104
+A가 성공 응답했으나 저장되지 않은 것: [ChatRecord[conversationId=conv-36a37954, seq=104, epoch=5, body=A-104, marker=false]]

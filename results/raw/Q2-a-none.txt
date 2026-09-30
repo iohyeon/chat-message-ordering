@@ -1,0 +1,150 @@
+
+=== 시나리오 a-none (prior=NONE, 후임 B=true, ops=[send, commit, abort]) ===
+  A initTransactions -> 성공 (119ms)
+  [A 초기 producerIdAndEpoch] (producerId=3, epoch=0)
+  A begin (seq 100 기록용) -> 성공 (0ms)
+  A send(100) Future.get() -> 성공 (21ms) offset=0
+  A send(100) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | A@a-none]
+  A commit (seq 100) -> 성공 (11ms)
+  [A seq 100 커밋 뒤 producerIdAndEpoch] (producerId=3, epoch=1)
+  A begin -> 성공 (0ms)
+  [A 멈춤 직전 producerIdAndEpoch] (producerId=3, epoch=1)
+  [A 멈춤 직전 클라이언트 상태] IN_TRANSACTION
+  [fencing 전 조정자 상태] state=CompleteCommit producerId=3 producerEpoch=1 topicPartitions=[]
+  [fencing 전 파티션 producer 상태] [producerId=3 producerEpoch=1 lastSequence=-1 currentTransactionStartOffset=OptionalLong.empty]
+  [fencing 전 HW] 2
+  [fencing 전 LSO] 2
+  B initTransactions -> 성공 (115ms)
+  [B producerIdAndEpoch] (producerId=3, epoch=2)
+  [fencing 뒤 조정자 상태] state=Empty producerId=3 producerEpoch=2 topicPartitions=[]
+  [fencing 뒤 파티션 producer 상태] [producerId=3 producerEpoch=1 lastSequence=-1 currentTransactionStartOffset=OptionalLong.empty]
+  [fencing 뒤 HW] 2
+  [fencing 뒤 LSO] 2
+  -- A 깨어남 --
+  A send(101) Future.get() -> org.apache.kafka.common.errors.InvalidProducerEpochException: Producer attempted to produce with an old epoch. (12ms)
+  A send(101) callback -> org.apache.kafka.common.errors.InvalidProducerEpochException: Producer attempted to produce with an old epoch. (0ms) [콜백 스레드=kafka-producer-network-thread | A@a-none]
+  [op#0 send 뒤 A 클라이언트 상태] ABORTABLE_ERROR lastError=InvalidProducerEpochException
+  A commitTransaction -> org.apache.kafka.common.errors.InvalidProducerEpochException: Producer with transactionalId 'q-a-none' and (producerId=3, epoch=1) attempted to produce with an old epoch (0ms)
+  [op#1 commit 뒤 A 클라이언트 상태] ABORTABLE_ERROR lastError=InvalidProducerEpochException
+  A abortTransaction -> org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. (2ms)
+  [op#2 abort 뒤 A 클라이언트 상태] FATAL_ERROR lastError=ProducerFencedException
+  -- B 수락 --
+  B begin -> 성공 (0ms)
+  B send(101) Future.get() -> 성공 (13ms) offset=2
+  B send(101) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | B@a-none]
+  B commit -> 성공 (3ms)
+  [B 커밋 뒤 producerIdAndEpoch] (producerId=3, epoch=3)
+  -- A close --
+  A close -> 성공 (0ms)
+  close 뒤 A send(101) Future.isDone=true callback.isDone=true
+  [마지막 조정자 상태] state=CompleteCommit producerId=3 producerEpoch=3 topicPartitions=[]
+  [마지막 파티션 producer 상태] [producerId=3 producerEpoch=3 lastSequence=-1 currentTransactionStartOffset=OptionalLong.empty]
+  kafka-dump-log 요약:
+    baseOffset=0 lastOffset=0 baseSequence=0 lastSequence=0 producerId=3 producerEpoch=0 isTransactional=true isControl=false
+        | offset=0 sequence=0 payload: seq=100 writer=A
+    baseOffset=1 lastOffset=1 baseSequence=-1 lastSequence=-1 producerId=3 producerEpoch=1 isTransactional=true isControl=true
+        | offset=1 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=2 lastOffset=2 baseSequence=0 lastSequence=0 producerId=3 producerEpoch=2 isTransactional=true isControl=false
+        | offset=2 sequence=0 payload: seq=101 writer=B
+    baseOffset=3 lastOffset=3 baseSequence=-1 lastSequence=-1 producerId=3 producerEpoch=3 isTransactional=true isControl=true
+        | offset=3 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+  브로커 요청 로그 ([INIT_PRODUCER_ID, PRODUCE, ADD_PARTITIONS_TO_TXN, END_TXN, WRITE_TXN_MARKERS], q-a-none 또는 q-a-none-log 포함):
+    2026-09-30 03:25:25,616 INIT_PRODUCER_ID v5 clientId=A@a-none
+      request={"transactionalId":"q-a-none","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":3,"producerEpoch":0}
+    2026-09-30 03:25:25,637 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q-a-none","producerId":3,"producerEpoch":0,"verifyOnly":false,"topics":[{"name":"q-a-none-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q-a-none","topicResults":[{"name":"q-a-none-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-09-30 03:25:25,640 PRODUCE v13 clientId=A@a-none
+      request={"transactionalId":"q-a-none","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"99qwADq4SvaOPrJo7CXhzg","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"99qwADq4SvaOPrJo7CXhzg","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":0,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:25,649 END_TXN v5 clientId=A@a-none
+      request={"transactionalId":"q-a-none","producerId":3,"producerEpoch":0,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":3,"producerEpoch":1}
+    2026-09-30 03:25:25,654 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":3,"producerEpoch":1,"transactionResult":true,"topics":[{"name":"q-a-none-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":3,"topics":[{"name":"q-a-none-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-09-30 03:25:25,779 INIT_PRODUCER_ID v5 clientId=B@a-none
+      request={"transactionalId":"q-a-none","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":3,"producerEpoch":2}
+    2026-09-30 03:25:25,808 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q-a-none","producerId":3,"producerEpoch":1,"verifyOnly":false,"topics":[{"name":"q-a-none-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q-a-none","topicResults":[{"name":"q-a-none-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":90}]}]}]}
+    2026-09-30 03:25:25,809 PRODUCE v13 clientId=A@a-none
+      request={"transactionalId":"q-a-none","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"99qwADq4SvaOPrJo7CXhzg","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"99qwADq4SvaOPrJo7CXhzg","partitionResponses":[{"index":0,"errorCode":47,"baseOffset":-1,"logAppendTimeMs":-1,"logStartOffset":-1,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:25,812 END_TXN v5 clientId=A@a-none
+      request={"transactionalId":"q-a-none","producerId":3,"producerEpoch":1,"committed":false}
+      response={"throttleTimeMs":0,"errorCode":90,"producerId":-1,"producerEpoch":-1}
+    2026-09-30 03:25:25,827 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q-a-none","producerId":3,"producerEpoch":2,"verifyOnly":false,"topics":[{"name":"q-a-none-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q-a-none","topicResults":[{"name":"q-a-none-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-09-30 03:25:25,828 PRODUCE v13 clientId=B@a-none
+      request={"transactionalId":"q-a-none","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"99qwADq4SvaOPrJo7CXhzg","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"99qwADq4SvaOPrJo7CXhzg","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":2,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:25,832 END_TXN v5 clientId=B@a-none
+      request={"transactionalId":"q-a-none","producerId":3,"producerEpoch":2,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":3,"producerEpoch":3}
+    2026-09-30 03:25:25,833 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":3,"producerEpoch":3,"transactionResult":true,"topics":[{"name":"q-a-none-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":3,"topics":[{"name":"q-a-none-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+  브로커 로그 (q-a-none 또는 q-a-none-log 포함):
+    [2026-09-30 03:25:25,488] INFO [ReplicaFetcherManager on broker 1] Removed fetcher for partitions Set(q-a-none-log-0) (kafka.server.ReplicaFetcherManager)
+    [2026-09-30 03:25:25,493] INFO [LogLoader partition=q-a-none-log-0, dir=/tmp/kafka-logs] Loading producer state till offset 0 (org.apache.kafka.storage.internals.log.UnifiedLog)
+    [2026-09-30 03:25:25,493] INFO Created log for partition q-a-none-log-0 in /tmp/kafka-logs/q-a-none-log-0 with properties {} (kafka.log.LogManager)
+    [2026-09-30 03:25:25,494] INFO [Partition q-a-none-log-0 broker=1] No checkpointed highwatermark is found for partition q-a-none-log-0 (kafka.cluster.Partition)
+    [2026-09-30 03:25:25,494] INFO [Partition q-a-none-log-0 broker=1] Log loaded for partition q-a-none-log-0 with initial high watermark 0 (kafka.cluster.Partition)
+    [2026-09-30 03:25:25,611] DEBUG TransactionalId q-a-none prepare transition from EMPTY to EMPTY (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,613] DEBUG TransactionalId q-a-none complete transition from EMPTY to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1790738725611, clientTransactionVersion=TV_0] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,615] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1790738725611, clientTransactionVersion=TV_0] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-09-30 03:25:25,615] INFO [TransactionCoordinator id=1] Initialized transactionalId q-a-none with producerId 3 and producer epoch 0 on partition __transaction_state-42 (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-09-30 03:25:25,629] DEBUG TransactionalId q-a-none prepare transition from EMPTY to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,635] DEBUG TransactionalId q-a-none complete transition from EMPTY to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=ONGOING, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725629, txnLastUpdateTimestamp=1790738725629, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,635] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=ONGOING, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725629, txnLastUpdateTimestamp=1790738725629, clientTransactionVersion=TV_2] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-09-30 03:25:25,643] DEBUG TransactionalId q-a-none prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,645] DEBUG TransactionalId q-a-none complete transition from ONGOING to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=60000, txnState=PREPARE_COMMIT, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725629, txnLastUpdateTimestamp=1790738725643, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,646] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=60000, txnState=PREPARE_COMMIT, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725629, txnLastUpdateTimestamp=1790738725643, clientTransactionVersion=TV_2] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-09-30 03:25:25,646] DEBUG TransactionalId q-a-none prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,655] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1790738725654, latencyMs=6, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=9, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=3, topics=[WritableTxnMarkerTopicResult(name='q-a-none-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 9 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-09-30 03:25:25,656] DEBUG [Transaction Marker Channel Manager 1]: Sending q-a-none's transaction markers for TransactionMetadata(transactionalId=q-a-none, producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=60000, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1790738725629, txnLastUpdateTimestamp=1790738725643, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-09-30 03:25:25,656] DEBUG TransactionalId q-a-none complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=60000, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1790738725629, txnLastUpdateTimestamp=1790738725646, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,656] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=60000, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1790738725629, txnLastUpdateTimestamp=1790738725646, clientTransactionVersion=TV_2] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-09-30 03:25:25,776] DEBUG TransactionalId q-a-none prepare transition from COMPLETE_COMMIT to EMPTY (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,777] DEBUG TransactionalId q-a-none complete transition from COMPLETE_COMMIT to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1790738725776, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,778] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1790738725776, clientTransactionVersion=TV_2] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-09-30 03:25:25,778] INFO [TransactionCoordinator id=1] Initialized transactionalId q-a-none with producerId 3 and producer epoch 2 on partition __transaction_state-42 (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-09-30 03:25:25,807] DEBUG [TransactionCoordinator id=1] Returning PRODUCER_FENCED error code to client for q-a-none's AddPartitions request (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-09-30 03:25:25,811] DEBUG [TransactionCoordinator id=1] Aborting append of ABORT to transaction log with coordinator and returning PRODUCER_FENCED error to client for q-a-none's EndTransaction request (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-09-30 03:25:25,825] DEBUG TransactionalId q-a-none prepare transition from EMPTY to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,826] DEBUG TransactionalId q-a-none complete transition from EMPTY to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=ONGOING, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725825, txnLastUpdateTimestamp=1790738725825, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,826] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=-1, txnTimeoutMs=60000, txnState=ONGOING, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725825, txnLastUpdateTimestamp=1790738725825, clientTransactionVersion=TV_2] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-09-30 03:25:25,830] DEBUG TransactionalId q-a-none prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,831] DEBUG TransactionalId q-a-none complete transition from ONGOING to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=2, txnTimeoutMs=60000, txnState=PREPARE_COMMIT, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725825, txnLastUpdateTimestamp=1790738725830, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,832] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=2, txnTimeoutMs=60000, txnState=PREPARE_COMMIT, topicPartitions=[q-a-none-log-0], txnStartTimestamp=1790738725825, txnLastUpdateTimestamp=1790738725830, clientTransactionVersion=TV_2] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-09-30 03:25:25,832] DEBUG TransactionalId q-a-none prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,833] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1790738725833, latencyMs=1, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=10, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=3, topics=[WritableTxnMarkerTopicResult(name='q-a-none-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 10 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-09-30 03:25:25,833] DEBUG [Transaction Marker Channel Manager 1]: Sending q-a-none's transaction markers for TransactionMetadata(transactionalId=q-a-none, producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=2, txnTimeoutMs=60000, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1790738725825, txnLastUpdateTimestamp=1790738725830, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-09-30 03:25:25,834] DEBUG TransactionalId q-a-none complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=2, txnTimeoutMs=60000, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1790738725825, txnLastUpdateTimestamp=1790738725832, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-09-30 03:25:25,834] DEBUG [Transaction State Manager 1]: Updating q-a-none's transaction state to TxnTransitMetadata[producerId=3, prevProducerId=3, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=2, txnTimeoutMs=60000, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1790738725825, txnLastUpdateTimestamp=1790738725832, clientTransactionVersion=TV_2] with coordinator epoch 0 for q-a-none succeeded (kafka.coordinator.transaction.TransactionStateManager)
+  A 클라이언트 로그 (상태 전이, 에러):
+    DEBUG [ForkJoinPool.commonPool-worker-1] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state UNINITIALIZED to INITIALIZING
+    INFO [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] ProducerId set to 3 with epoch 0
+    DEBUG [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state INITIALIZING to READY
+    DEBUG [ForkJoinPool.commonPool-worker-1] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state READY to IN_TRANSACTION
+    DEBUG [ForkJoinPool.commonPool-worker-1] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state IN_TRANSACTION to COMMITTING_TRANSACTION
+    DEBUG [ForkJoinPool.commonPool-worker-1] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Enqueuing transactional request EndTxnRequestData(transactionalId='q-a-none', producerId=3, producerEpoch=0, committed=true)
+    DEBUG [kafka-producer-network-thread | A@a-none] Sender - [Producer clientId=A@a-none, transactionalId=q-a-none] Sending transactional request EndTxnRequestData(transactionalId='q-a-none', producerId=3, producerEpoch=0, committed=true) to node localhost:32885 (id: 1 rack: null isFenced: false) with correlation ID 8
+    DEBUG [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] ProducerId set to 3 with epoch 1
+    DEBUG [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state COMMITTING_TRANSACTION to READY
+    DEBUG [ForkJoinPool.commonPool-worker-1] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state READY to IN_TRANSACTION
+    INFO [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transiting to abortable error state due to org.apache.kafka.common.errors.InvalidProducerEpochException: Producer attempted to produce with an old epoch.
+    DEBUG [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state IN_TRANSACTION to error state ABORTABLE_ERROR | org.apache.kafka.common.errors.InvalidProducerEpochException: Producer attempted to produce with an old epoch.
+    INFO [ForkJoinPool.commonPool-worker-1] KafkaProducer - [Producer clientId=A@a-none, transactionalId=q-a-none] Aborting incomplete transaction
+    DEBUG [ForkJoinPool.commonPool-worker-1] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state ABORTABLE_ERROR to ABORTING_TRANSACTION
+    DEBUG [ForkJoinPool.commonPool-worker-1] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Enqueuing transactional request EndTxnRequestData(transactionalId='q-a-none', producerId=3, producerEpoch=1, committed=false)
+    DEBUG [kafka-producer-network-thread | A@a-none] Sender - [Producer clientId=A@a-none, transactionalId=q-a-none] Sending transactional request EndTxnRequestData(transactionalId='q-a-none', producerId=3, producerEpoch=1, committed=false) to node localhost:32885 (id: 1 rack: null isFenced: false) with correlation ID 10
+    INFO [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transiting to fatal error state due to org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one.
+    DEBUG [kafka-producer-network-thread | A@a-none] TransactionManager - [Producer clientId=A@a-none, transactionalId=q-a-none] Transition from state ABORTING_TRANSACTION to error state FATAL_ERROR | org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one.
+  B 클라이언트 로그 (producer ID 할당, 재시도):
+    INFO [kafka-producer-network-thread | B@a-none] TransactionManager - [Producer clientId=B@a-none, transactionalId=q-a-none] ProducerId set to 3 with epoch 2
+    DEBUG [kafka-producer-network-thread | B@a-none] TransactionManager - [Producer clientId=B@a-none, transactionalId=q-a-none] ProducerId set to 3 with epoch 3

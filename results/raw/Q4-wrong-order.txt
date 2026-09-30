@@ -1,0 +1,99 @@
+
+=== 잘못된 순서: lease 획득, replay, (A 커밋), initTransactions, 수락 ===
+  A initTransactions -> 성공 (129ms)
+  A begin -> 성공 (0ms)
+  A send(100) Future.get() -> 성공 (26ms) offset=0
+  A send(100) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | A@q4-wrong]
+  A commit(100) -> 성공 (3ms)
+  A begin -> 성공 (0ms)
+  A send(101) Future.get() -> 성공 (10ms) offset=2
+  A send(101) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | A@q4-wrong]
+  A send(102) Future.get() -> 성공 (8ms) offset=3
+  A send(102) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | A@q4-wrong]
+  A 커밋 직전에 멈춤. producerIdAndEpoch=(producerId=1, epoch=1)
+  [A 멈춤] HW=4 LSO=2 조정자: state=Ongoing producerId=1 producerEpoch=1 topicPartitions=[q4-wrong-log-0]
+  -- B replay (read_committed, 끝 = 시작 시점 endOffsets) --
+  B replay: lastSeq=100 endOffset(=LSO)=2 position=2 seen=[0:seq=100 writer=A]
+  -- LSO 정체 관찰: read_committed 소비자가 HW까지 가려고 3초 poll --
+  정체 관찰 소비자가 받은 레코드: [0:seq=100 writer=A] endOffsets()=2
+  목표 HW=4 3초 뒤 position=2
+  -- A를 깨워 커밋시킨다 (B의 initTransactions 전) --
+  -- A 깨어남 --
+  A commitTransaction (101, 102) -> 성공 (12ms)
+  [A 커밋 뒤] HW=5 LSO=5 조정자: state=CompleteCommit producerId=1 producerEpoch=2 topicPartitions=[]
+  B initTransactions -> 성공 (115ms)
+  B producerIdAndEpoch=(producerId=1, epoch=3)
+  B begin -> 성공 (0ms)
+  B send(101) Future.get() -> 성공 (20ms) offset=5
+  B send(101) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | B@q4-wrong]
+  B send(102) Future.get() -> 성공 (10ms) offset=6
+  B send(102) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | B@q4-wrong]
+  B commit -> 성공 (7ms)
+  read_committed 결과: [seq=100 writer=A, seq=101 writer=A, seq=102 writer=A, seq=101 writer=B, seq=102 writer=B]
+  read_uncommitted 결과: [0:seq=100 writer=A, 2:seq=101 writer=A, 3:seq=102 writer=A, 5:seq=101 writer=B, 6:seq=102 writer=B]
+  kafka-dump-log 요약:
+    baseOffset=0 lastOffset=0 baseSequence=0 lastSequence=0 producerId=1 producerEpoch=0 isTransactional=true isControl=false
+        | offset=0 sequence=0 payload: seq=100 writer=A
+    baseOffset=1 lastOffset=1 baseSequence=-1 lastSequence=-1 producerId=1 producerEpoch=1 isTransactional=true isControl=true
+        | offset=1 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=2 lastOffset=2 baseSequence=0 lastSequence=0 producerId=1 producerEpoch=1 isTransactional=true isControl=false
+        | offset=2 sequence=0 payload: seq=101 writer=A
+    baseOffset=3 lastOffset=3 baseSequence=1 lastSequence=1 producerId=1 producerEpoch=1 isTransactional=true isControl=false
+        | offset=3 sequence=1 payload: seq=102 writer=A
+    baseOffset=4 lastOffset=4 baseSequence=-1 lastSequence=-1 producerId=1 producerEpoch=2 isTransactional=true isControl=true
+        | offset=4 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=5 lastOffset=5 baseSequence=0 lastSequence=0 producerId=1 producerEpoch=3 isTransactional=true isControl=false
+        | offset=5 sequence=0 payload: seq=101 writer=B
+    baseOffset=6 lastOffset=6 baseSequence=1 lastSequence=1 producerId=1 producerEpoch=3 isTransactional=true isControl=false
+        | offset=6 sequence=1 payload: seq=102 writer=B
+    baseOffset=7 lastOffset=7 baseSequence=-1 lastSequence=-1 producerId=1 producerEpoch=4 isTransactional=true isControl=true
+        | offset=7 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+  브로커 요청 로그:
+    2026-09-30 03:25:44,442 INIT_PRODUCER_ID v5 clientId=A@q4-wrong
+      request={"transactionalId":"q4-wrong","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":1,"producerEpoch":0}
+    2026-09-30 03:25:44,474 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q4-wrong","producerId":1,"producerEpoch":0,"verifyOnly":false,"topics":[{"name":"q4-wrong-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q4-wrong","topicResults":[{"name":"q4-wrong-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-09-30 03:25:44,477 PRODUCE v13 clientId=A@q4-wrong
+      request={"transactionalId":"q4-wrong","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":0,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:44,480 END_TXN v5 clientId=A@q4-wrong
+      request={"transactionalId":"q4-wrong","producerId":1,"producerEpoch":0,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":1,"producerEpoch":1}
+    2026-09-30 03:25:44,482 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":1,"producerEpoch":1,"transactionResult":true,"topics":[{"name":"q4-wrong-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":1,"topics":[{"name":"q4-wrong-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-09-30 03:25:44,490 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q4-wrong","producerId":1,"producerEpoch":1,"verifyOnly":false,"topics":[{"name":"q4-wrong-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q4-wrong","topicResults":[{"name":"q4-wrong-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-09-30 03:25:44,491 PRODUCE v13 clientId=A@q4-wrong
+      request={"transactionalId":"q4-wrong","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":2,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:44,500 PRODUCE v13 clientId=A@q4-wrong
+      request={"transactionalId":"q4-wrong","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":3,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:48,105 END_TXN v5 clientId=A@q4-wrong
+      request={"transactionalId":"q4-wrong","producerId":1,"producerEpoch":1,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":1,"producerEpoch":2}
+    2026-09-30 03:25:48,110 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":1,"producerEpoch":2,"transactionResult":true,"topics":[{"name":"q4-wrong-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":1,"topics":[{"name":"q4-wrong-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-09-30 03:25:48,236 INIT_PRODUCER_ID v5 clientId=B@q4-wrong
+      request={"transactionalId":"q4-wrong","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":1,"producerEpoch":3}
+    2026-09-30 03:25:48,254 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q4-wrong","producerId":1,"producerEpoch":3,"verifyOnly":false,"topics":[{"name":"q4-wrong-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q4-wrong","topicResults":[{"name":"q4-wrong-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-09-30 03:25:48,259 PRODUCE v13 clientId=B@q4-wrong
+      request={"transactionalId":"q4-wrong","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":5,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:48,271 PRODUCE v13 clientId=B@q4-wrong
+      request={"transactionalId":"q4-wrong","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionData":[{"index":0,"recordsSizeInBytes":107}]}]}
+      response={"responses":[{"topicId":"R3tfq6oZRt21GCgjtt0kzQ","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":6,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-09-30 03:25:48,279 END_TXN v5 clientId=B@q4-wrong
+      request={"transactionalId":"q4-wrong","producerId":1,"producerEpoch":3,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":1,"producerEpoch":4}
+    2026-09-30 03:25:48,283 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":1,"producerEpoch":4,"transactionResult":true,"topics":[{"name":"q4-wrong-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":1,"topics":[{"name":"q4-wrong-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}

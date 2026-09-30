@@ -1,0 +1,1 @@
+  new KafkaProducer(transactional.id=q1-config, enable.idempotence=false) -> org.apache.kafka.common.config.ConfigException: Cannot set a transactional.id without also enabling idempotence. (0ms)

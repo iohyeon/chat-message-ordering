@@ -1,0 +1,14 @@
+=== b_workerLagging_leaseEq_dbReplay_dropsPreTakeoverRecords() topic=chat-log-c1c8693c conv=conv-c1c8693c
+A lease 획득 epoch=5 nextSeq=101
+B가 저장소에서 본 마지막 seq=100
+B lease 획득 epoch=6 nextSeq=101
+-- 지연된 워커의 처리
+   offset=0 record seq=101 epoch=5 body=A-101 -> REJECTED_EPOCH
+   offset=1 record seq=102 epoch=5 body=A-102 -> REJECTED_EPOCH
+   offset=2 record seq=101 epoch=6 body=B-101 -> STORED
+   offset=3 record seq=102 epoch=6 body=B-102 -> STORED
+-- message 테이블
+   seq=100 epoch=4 body=seed-100
+   seq=101 epoch=6 body=B-101
+   seq=102 epoch=6 body=B-102
+A가 성공 응답했으나 저장되지 않은 것: [ChatRecord[conversationId=conv-c1c8693c, seq=101, epoch=5, body=A-101, marker=false], ChatRecord[conversationId=conv-c1c8693c, seq=102, epoch=5, body=A-102, marker=false]]

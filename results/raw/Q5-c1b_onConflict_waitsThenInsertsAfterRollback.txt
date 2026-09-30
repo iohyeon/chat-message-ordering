@@ -1,0 +1,2 @@
+=== c1b_onConflict_waitsThenInsertsAfterRollback() conv=race-3
+막힘=true 대기=Lock/transactionid query=INSERT INTO message (conversation_id, conversation_seq, epoc 롤백 뒤 삽입 행 수=1
