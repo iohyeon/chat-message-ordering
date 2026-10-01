@@ -1,11 +1,11 @@
-=== a_b_workerCaughtUp_zombieRecordFiltered() topic=chat-log-e91e5062 conv=conv-e91e5062
+=== a_b_workerCaughtUp_zombieRecordFiltered() topic=chat-log-fad67856 conv=conv-fad67856
 A lease 획득 epoch=5 nextSeq=101
 -- 교체 전 처리
    offset=0 record seq=101 epoch=5 body=A-101 -> STORED
    offset=1 record seq=102 epoch=5 body=A-102 -> STORED
 B lease 획득 epoch=6 nextSeq=103
 B가 본 마지막 seq=102
-A의 좀비 전송 결과: 브로커 ack, 사용자에게 성공 응답 ChatRecord[conversationId=conv-e91e5062, seq=103, epoch=5, body=A-103, marker=false]
+A의 좀비 전송 결과: 브로커 ack, 사용자에게 성공 응답 ChatRecord[conversationId=conv-fad67856, seq=103, epoch=5, body=A-103, marker=false]
 -- 교체 뒤 처리
    offset=2 record seq=103 epoch=6 body=B-103 -> STORED
    offset=3 record seq=104 epoch=6 body=B-104 -> STORED

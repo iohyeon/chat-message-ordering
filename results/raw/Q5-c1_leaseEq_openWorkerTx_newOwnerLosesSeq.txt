@@ -1,6 +1,6 @@
 === c1_leaseEq_openWorkerTx_newOwnerLosesSeq() conv=race-2
 W: A-101 삽입 행 수=1 (아직 커밋 전)
-B: lease UPDATE 막힘=false, 걸린 시간=1.2ms, epoch=OptionalLong[6]
+B: lease UPDATE 막힘=false, 걸린 시간=0.9ms, epoch=OptionalLong[6]
 B: 저장소에서 본 마지막 seq=100
 B: B-101 삽입 막힘=true 대기=Lock/transactionid query=INSERT INTO message (conversation_id, conversation_seq, epoc
 W 커밋 뒤 B 삽입 행 수=0 판정=SLOT_TAKEN

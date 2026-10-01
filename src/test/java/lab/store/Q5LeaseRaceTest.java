@@ -332,53 +332,45 @@ class Q5LeaseRaceTest {
 
     /**
      * (c) 명시적 트랜잭션 없이 autocommit 문장끼리 경쟁시킨다. W는 A의 seq 1(epoch 5)을 넣고,
-     * B는 lease를 6으로 바꾼 뒤 마지막 seq를 읽고 그다음 seq에 넣는다. B가 0을 읽었는데 A의 1이 들어가 있으면 어긋남이다.
+     * B는 교체(lease UPDATE, LOG_ORDER 계열이면 fence 갱신) 뒤 마지막 seq를 읽고 그다음 seq에 넣는다({@link TakeoverRace}).
+     * B가 0을 읽었는데 A의 1이 들어가 있으면 어긋남이고, 그때 B의 삽입은 ON CONFLICT DO NOTHING으로 버려진다.
      * slowMs가 0보다 크면 epoch 5 행 삽입에 AFTER 트리거로 지연을 넣어 "문장 스냅숏과 커밋 사이" 구간을 넓힌다.
      */
     @Test
     void c5_autocommitRace_counts() throws Exception {
         int iterations = 2000;
         List<String> summary = new ArrayList<>();
+        List<FenceMode> modes = List.of(FenceMode.LEASE_EQ, FenceMode.LEASE_EQ_FOR_SHARE, FenceMode.LOG_ORDER,
+                FenceMode.LOG_ORDER_FOR_SHARE, FenceMode.LOG_ORDER_SNAPSHOT);
         for (int slowMs : new int[] {0, 5}) {
             setSlowTrigger(slowMs);
-            for (FenceMode mode : List.of(FenceMode.LEASE_EQ, FenceMode.LEASE_EQ_FOR_SHARE)) {
-                int anomalies = 0, aStored = 0, aRejected = 0;
+            for (FenceMode mode : modes) {
+                int anomalies = 0, aStored = 0, aRejected = 0, bDropped = 0;
                 try (Connection wc = ds.getConnection(); Connection bc = ds.getConnection()) {
                     for (int i = 0; i < iterations; i++) {
                         String id = "r" + slowMs + "-" + mode + "-" + i;
-                        leases.create(id, 4);
-                        LeaseRepository.tryAcquire(wc, id, "A", Duration.ofSeconds(30)).orElseThrow();
-                        leases.forceExpire(id);
-                        var barrier = new CyclicBarrier(2);
-                        Future<Integer> fa = async(() -> {
-                            barrier.await();
-                            return MessageStore.insert(wc, mode, ChatRecord.message(id, 1, 5, "A-1"));
-                        });
-                        Future<long[]> fb = async(() -> {
-                            barrier.await();
-                            long e = LeaseRepository.tryAcquire(bc, id, "B", Duration.ofSeconds(30)).orElseThrow();
-                            long m = MessageStore.maxSeq(bc, id);
-                            int bn = MessageStore.insert(bc, mode, ChatRecord.message(id, m + 1, e, "B-" + (m + 1)));
-                            return new long[] {m, bn};
-                        });
-                        int an = fa.get();
-                        long[] br = fb.get();
-                        if (an == 1) {
+                        TakeoverRace.prepare(ds, leases, wc, id, mode);
+                        var round = TakeoverRace.run(pool, wc, bc, id, mode, false);
+                        if (round.aInserted() == 1) {
                             aStored++;
                         } else {
                             aRejected++;
                         }
-                        if (an == 1 && br[0] == 0) {
+                        if (round.bInserted() == 0) {
+                            bDropped++;
+                        }
+                        if (round.anomaly()) {
                             anomalies++;
-                            assertThat(br[1]).isZero();
+                            assertThat(round.bInserted()).isZero();
                         }
                     }
                 }
-                String line = String.format("slowMs=%d mode=%s 반복=%d A저장=%d A거부=%d 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=%d",
-                        slowMs, mode, iterations, aStored, aRejected, anomalies);
+                String line = String.format("slowMs=%d mode=%s 반복=%d A저장=%d A거부=%d 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=%d B버려짐=%d",
+                        slowMs, mode, iterations, aStored, aRejected, anomalies, bDropped);
                 summary.add(line);
                 r.line(line);
-                if (mode == FenceMode.LEASE_EQ_FOR_SHARE) {
+                assertThat(bDropped).isEqualTo(anomalies);
+                if (mode != FenceMode.LEASE_EQ && mode != FenceMode.LOG_ORDER_SNAPSHOT) {
                     assertThat(anomalies).isZero();
                 }
             }

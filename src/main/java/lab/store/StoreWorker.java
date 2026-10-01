@@ -57,7 +57,7 @@ public final class StoreWorker implements AutoCloseable {
                     ChatRecord r = ChatRecord.from(cr);
                     MessageStore.Outcome outcome;
                     if (r.marker()) {
-                        if (mode == FenceMode.LOG_ORDER) {
+                        if (mode.usesFence()) {
                             MessageStore.bumpFence(c, r.conversationId(), r.epoch());
                         }
                         outcome = null;

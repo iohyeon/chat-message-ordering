@@ -1,9 +1,21 @@
 === c5_autocommitRace_counts() conv=race-5
-slowMs=0 mode=LEASE_EQ 반복=2000 A저장=1583 A거부=417 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
-slowMs=0 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=518 A거부=1482 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
-slowMs=5 mode=LEASE_EQ 반복=2000 A저장=1739 A거부=261 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1737
-slowMs=5 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=586 A거부=1414 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
-RESULT slowMs=0 mode=LEASE_EQ 반복=2000 A저장=1583 A거부=417 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
-RESULT slowMs=0 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=518 A거부=1482 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
-RESULT slowMs=5 mode=LEASE_EQ 반복=2000 A저장=1739 A거부=261 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1737
-RESULT slowMs=5 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=586 A거부=1414 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0
+slowMs=0 mode=LEASE_EQ 반복=2000 A저장=1674 A거부=326 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=0 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=694 A거부=1306 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=0 mode=LOG_ORDER 반복=2000 A저장=1998 A거부=2 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=0 mode=LOG_ORDER_FOR_SHARE 반복=2000 A저장=1996 A거부=4 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=0 mode=LOG_ORDER_SNAPSHOT 반복=2000 A저장=1998 A거부=2 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=5 mode=LEASE_EQ 반복=2000 A저장=1744 A거부=256 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1737 B버려짐=1737
+slowMs=5 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=819 A거부=1181 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=5 mode=LOG_ORDER 반복=2000 A저장=1995 A거부=5 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=5 mode=LOG_ORDER_FOR_SHARE 반복=2000 A저장=1999 A거부=1 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+slowMs=5 mode=LOG_ORDER_SNAPSHOT 반복=2000 A저장=1994 A거부=6 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1867 B버려짐=1867
+RESULT slowMs=0 mode=LEASE_EQ 반복=2000 A저장=1674 A거부=326 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=0 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=694 A거부=1306 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=0 mode=LOG_ORDER 반복=2000 A저장=1998 A거부=2 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=0 mode=LOG_ORDER_FOR_SHARE 반복=2000 A저장=1996 A거부=4 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=0 mode=LOG_ORDER_SNAPSHOT 반복=2000 A저장=1998 A거부=2 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=5 mode=LEASE_EQ 반복=2000 A저장=1744 A거부=256 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1737 B버려짐=1737
+RESULT slowMs=5 mode=LEASE_EQ_FOR_SHARE 반복=2000 A저장=819 A거부=1181 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=5 mode=LOG_ORDER 반복=2000 A저장=1995 A거부=5 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=5 mode=LOG_ORDER_FOR_SHARE 반복=2000 A저장=1999 A거부=1 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=0 B버려짐=0
+RESULT slowMs=5 mode=LOG_ORDER_SNAPSHOT 반복=2000 A저장=1994 A거부=6 어긋남(B가 A의 삽입을 못 보고 같은 seq를 잃음)=1867 B버려짐=1867

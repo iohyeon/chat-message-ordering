@@ -1,4 +1,4 @@
-=== b_workerLagging_leaseEq_logReplay_leavesHole() topic=chat-log-91b3e147 conv=conv-91b3e147
+=== b_workerLagging_leaseEq_logReplay_leavesHole() topic=chat-log-b656d913 conv=conv-b656d913
 A lease 획득 epoch=5 nextSeq=101
 B가 로그 replay로 본 마지막 seq=102
 B lease 획득 epoch=6 nextSeq=103

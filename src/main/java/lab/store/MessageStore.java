@@ -44,29 +44,35 @@ public final class MessageStore {
     }
 
     static void bind(PreparedStatement ps, FenceMode mode, ChatRecord r) throws SQLException {
+        bind(ps, mode, r, 0);
+    }
+
+    /** 모드의 SQL을 더 큰 문장에 끼워 넣을 때 쓴다. 자리표시자 번호를 {@code offset} 만큼 민다. */
+    static void bind(PreparedStatement ps, FenceMode mode, ChatRecord r, int offset) throws SQLException {
+        int o = offset;
         switch (mode) {
             case PLAIN -> {
-                ps.setString(1, r.conversationId());
-                ps.setLong(2, r.seq());
-                ps.setLong(3, r.epoch());
-                ps.setString(4, r.body());
+                ps.setString(o + 1, r.conversationId());
+                ps.setLong(o + 2, r.seq());
+                ps.setLong(o + 3, r.epoch());
+                ps.setString(o + 4, r.body());
             }
-            case LEASE_EQ, LEASE_EQ_FOR_SHARE -> {
-                ps.setString(1, r.conversationId());
-                ps.setLong(2, r.seq());
-                ps.setLong(3, r.epoch());
-                ps.setString(4, r.body());
-                ps.setLong(5, r.epoch());
-                ps.setString(6, r.conversationId());
+            case LEASE_EQ, LEASE_EQ_FOR_SHARE, LOG_ORDER_SNAPSHOT, LOG_ORDER_FOR_SHARE, LOG_ORDER_FOR_UPDATE -> {
+                ps.setString(o + 1, r.conversationId());
+                ps.setLong(o + 2, r.seq());
+                ps.setLong(o + 3, r.epoch());
+                ps.setString(o + 4, r.body());
+                ps.setLong(o + 5, r.epoch());
+                ps.setString(o + 6, r.conversationId());
             }
             case LOG_ORDER -> {
-                ps.setString(1, r.conversationId());
-                ps.setLong(2, r.epoch());
-                ps.setString(3, r.conversationId());
-                ps.setLong(4, r.seq());
-                ps.setLong(5, r.epoch());
-                ps.setString(6, r.body());
-                ps.setLong(7, r.epoch());
+                ps.setString(o + 1, r.conversationId());
+                ps.setLong(o + 2, r.epoch());
+                ps.setString(o + 3, r.conversationId());
+                ps.setLong(o + 4, r.seq());
+                ps.setLong(o + 5, r.epoch());
+                ps.setString(o + 6, r.body());
+                ps.setLong(o + 7, r.epoch());
             }
         }
     }
@@ -90,7 +96,8 @@ public final class MessageStore {
 
     /**
      * 0행이었던 쓰기의 이유를 붙인다. 쓰기와 같은 순간의 판단이 아니라 뒤이은 조회 결과다.
-     * 순서: 같은 행이 있으면 DUPLICATE, 지금 기준 epoch와 다르면 REJECTED_EPOCH, 다른 행이 자리를 차지했으면 SLOT_TAKEN.
+     * 순서: 같은 행이 있으면 DUPLICATE, 지금 기준 epoch에 맞지 않으면(LEASE_EQ 계열은 다르면, LOG_ORDER 계열은 작으면)
+     * REJECTED_EPOCH, 다른 행이 자리를 차지했으면 SLOT_TAKEN.
      * 어느 것도 아니면 설명되지 않는 0행이므로 예외를 던진다.
      */
     public static Outcome classify(Connection c, FenceMode mode, ChatRecord r, int inserted) throws SQLException {
@@ -117,10 +124,13 @@ public final class MessageStore {
             case PLAIN -> null;
             case LEASE_EQ, LEASE_EQ_FOR_SHARE ->
                     scalar(c, "SELECT epoch FROM conversation_owner WHERE conversation_id = ?", r.conversationId());
-            case LOG_ORDER ->
+            case LOG_ORDER, LOG_ORDER_SNAPSHOT, LOG_ORDER_FOR_SHARE, LOG_ORDER_FOR_UPDATE ->
                     scalar(c, "SELECT max_epoch FROM message_fence WHERE conversation_id = ?", r.conversationId());
         };
-        if (reference != null && reference != r.epoch()) {
+        // LEASE_EQ 계열은 같아야 들어가고, LOG_ORDER 계열은 fence보다 작으면 거부된다.
+        boolean rejected = reference != null
+                && (mode.usesFence() ? r.epoch() < reference : reference != r.epoch());
+        if (rejected) {
             return Outcome.REJECTED_EPOCH;
         }
         if (existingEpoch != null) {

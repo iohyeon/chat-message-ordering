@@ -1,0 +1,7 @@
+postgres,mode,iterations,a_stored,a_rejected_snapshot_old,a_rejected_snapshot_new,a_stored_snapshot_new,anomalies,b_dropped,a_ms_p50_stored,a_ms_p50_rejected_snapshot_old,a_ms_p50_rejected_snapshot_new
+fsync-on,LEASE_EQ,20000,19831,0,169,0,110,110,0.538,NaN,0.678
+fsync-on,LEASE_EQ_FOR_SHARE,20000,3101,16662,237,0,0,0,0.623,0.650,1.071
+fsync-on,LOG_ORDER_FOR_SHARE,20000,19963,21,16,0,0,0,0.632,1.061,2.020
+fsync-off,LEASE_EQ,20000,15379,0,4621,0,2,2,0.339,NaN,0.398
+fsync-off,LEASE_EQ_FOR_SHARE,20000,2387,13760,3853,0,0,0,0.401,0.315,0.381
+fsync-off,LOG_ORDER_FOR_SHARE,20000,19957,9,34,0,0,0,0.356,1.062,1.068
