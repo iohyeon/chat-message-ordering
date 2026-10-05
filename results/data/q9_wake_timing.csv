@@ -1,0 +1,241 @@
+trial,wake,policy,pause_ms,wake_ms,describe_ms,state_before_wake,send_error,commit_error,commit_ms,handling,abort_error,restart_init_ms,replay_last_seq,txn_start_vm_ms,rollback_vm_ms,rollback_after_start_ms,acked,failed,broker_acked_aborted,dup_seqs,gaps,acked_lost,failed_stored,a_end_txn_errors
+0,COMMIT,A_ABORT_REWIND,833,846,8,Ongoing,-,-,5,none,-,-1,-1,1791177738639,-1,-1,5,0,0,0,0,0,0,0 0 0
+1,SEND,A_ABORT_REWIND,899,912,8,Ongoing,-,-,13,none,-,-1,-1,1791177740405,-1,-1,6,0,0,0,0,0,0,0 0 0
+2,COMMIT,B_RESTART,843,853,5,Ongoing,-,-,6,none,-,-1,-1,1791177742145,-1,-1,5,0,0,0,0,0,0,0 0 0
+3,SEND,B_RESTART,2863,2874,6,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,12,restart,-,125,100,1791177743798,1791177745520,1722,3,3,2,0,0,0,0,0 0
+4,COMMIT,A_ABORT_REWIND,1434,1441,4,Ongoing,-,-,3,none,-,-1,-1,1791177748066,-1,-1,5,0,0,0,0,0,0,0 0 0
+5,SEND,A_ABORT_REWIND,1736,1749,8,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,4,abort_rewind,-,-1,-1,1791177750290,1791177751879,1589,3,3,2,0,0,0,0,0 0 0
+6,COMMIT,B_RESTART,1912,1926,9,CompleteAbort,-,InvalidTxnStateException,6,restart,-,134,100,1791177752832,1791177754379,1547,3,2,2,0,0,0,0,0 48
+7,SEND,B_RESTART,2310,2337,24,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,6,restart,-,130,100,1791177756093,1791177757694,1601,3,3,2,0,0,0,0,0 0
+8,COMMIT,A_ABORT_REWIND,2989,3009,16,CompleteAbort,-,InvalidTxnStateException,5,abort_failed_restart,KafkaException,125,100,1791177759955,1791177761694,1739,3,2,2,0,0,0,0,0 48
+9,SEND,A_ABORT_REWIND,2792,2796,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791177764507,1791177766052,1545,3,3,2,0,0,0,0,0 0 0
+10,COMMIT,B_RESTART,245,251,4,Ongoing,-,-,3,none,-,-1,-1,1791177768012,-1,-1,5,0,0,0,0,0,0,0 0 0
+11,SEND,B_RESTART,160,169,4,Ongoing,-,-,5,none,-,-1,-1,1791177769053,-1,-1,6,0,0,0,0,0,0,0 0 0
+12,COMMIT,A_ABORT_REWIND,2394,2449,54,CompleteAbort,-,InvalidTxnStateException,5,abort_failed_restart,KafkaException,133,100,1791177769998,1791177771551,1553,3,2,2,0,0,0,0,0 48
+13,SEND,A_ABORT_REWIND,1203,1213,7,Ongoing,-,-,11,none,-,-1,-1,1791177773940,-1,-1,6,0,0,0,0,0,0,0 0 0
+14,COMMIT,B_RESTART,1678,1689,8,Ongoing,-,-,4,none,-,-1,-1,1791177775976,-1,-1,5,0,0,0,0,0,0,0 0 0
+15,SEND,B_RESTART,777,785,5,Ongoing,-,-,9,none,-,-1,-1,1791177778287,-1,-1,6,0,0,0,0,0,0,0 0 0
+16,COMMIT,A_ABORT_REWIND,1550,1559,4,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,114,100,1791177779836,1791177781415,1579,3,2,2,0,0,0,0,0 48
+17,SEND,A_ABORT_REWIND,1303,1319,11,Ongoing,-,-,19,none,-,-1,-1,1791177782812,-1,-1,6,0,0,0,0,0,0,0 0 0
+18,COMMIT,B_RESTART,2832,2838,5,CompleteAbort,-,InvalidTxnStateException,2,restart,-,117,100,1791177784964,1791177786768,1804,3,2,2,0,0,0,0,0 48
+19,SEND,B_RESTART,963,972,4,Ongoing,-,-,4,none,-,-1,-1,1791177789110,-1,-1,6,0,0,0,0,0,0,0 0 0
+20,COMMIT,A_ABORT_REWIND,2694,2706,7,CompleteAbort,-,InvalidTxnStateException,2,abort_failed_restart,KafkaException,119,100,1791177790875,1791177792770,1895,3,2,2,0,0,0,0,0 48
+21,SEND,A_ABORT_REWIND,2387,2395,7,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,5,abort_rewind,-,-1,-1,1791177795205,1791177797137,1932,3,3,2,0,0,0,0,0 0 0
+22,COMMIT,B_RESTART,1384,1435,44,Ongoing,-,-,10,none,-,-1,-1,1791177798237,-1,-1,5,0,0,0,0,0,0,0 0 0
+23,SEND,B_RESTART,426,435,4,Ongoing,-,-,12,none,-,-1,-1,1791177800587,-1,-1,6,0,0,0,0,0,0,0 0 0
+24,COMMIT,A_ABORT_REWIND,1669,1678,8,Ongoing,-,-,4,none,-,-1,-1,1791177801750,-1,-1,5,0,0,0,0,0,0,0 0 0
+25,SEND,A_ABORT_REWIND,1849,1858,4,Ongoing,-,-,5,none,-,-1,-1,1791177804187,-1,-1,6,0,0,0,0,0,0,0 0 0
+26,COMMIT,B_RESTART,339,351,7,Ongoing,-,-,16,none,-,-1,-1,1791177806676,-1,-1,5,0,0,0,0,0,0,0 0 0
+27,SEND,B_RESTART,199,208,4,Ongoing,-,-,4,none,-,-1,-1,1791177807815,-1,-1,6,0,0,0,0,0,0,0 0 0
+28,COMMIT,A_ABORT_REWIND,1921,1932,7,CompleteAbort,-,InvalidTxnStateException,4,abort_failed_restart,KafkaException,123,100,1791177808850,1791177810504,1654,3,2,2,0,0,0,0,0 48
+29,SEND,A_ABORT_REWIND,1525,1536,8,Ongoing,-,-,8,none,-,-1,-1,1791177812357,-1,-1,6,0,0,0,0,0,0,0 0 0
+30,COMMIT,B_RESTART,551,562,6,Ongoing,-,-,6,none,-,-1,-1,1791177814695,-1,-1,5,0,0,0,0,0,0,0 0 0
+31,SEND,B_RESTART,1311,1322,6,Ongoing,-,-,5,none,-,-1,-1,1791177816048,-1,-1,6,0,0,0,0,0,0,0 0 0
+32,COMMIT,A_ABORT_REWIND,1843,1849,4,Ongoing,-,-,3,none,-,-1,-1,1791177817970,-1,-1,5,0,0,0,0,0,0,0 0 0
+33,SEND,A_ABORT_REWIND,1386,1392,4,Ongoing,-,-,13,none,-,-1,-1,1791177820627,-1,-1,6,0,0,0,0,0,0,0 0 0
+34,COMMIT,B_RESTART,2734,2742,5,CompleteAbort,-,InvalidTxnStateException,3,restart,-,119,100,1791177822787,1791177824374,1587,3,2,2,0,0,0,0,0 48
+35,SEND,B_RESTART,377,383,4,Ongoing,-,-,5,none,-,-1,-1,1791177826789,-1,-1,6,0,0,0,0,0,0,0 0 0
+36,COMMIT,A_ABORT_REWIND,2975,2983,5,CompleteAbort,-,InvalidTxnStateException,2,abort_failed_restart,KafkaException,114,100,1791177827928,1791177829725,1797,3,2,2,0,0,0,0,0 48
+37,SEND,A_ABORT_REWIND,838,847,4,Ongoing,-,-,8,none,-,-1,-1,1791177832346,-1,-1,6,0,0,0,0,0,0,0 0 0
+38,COMMIT,B_RESTART,2771,2779,3,CompleteAbort,-,InvalidTxnStateException,1,restart,-,113,100,1791177833949,1791177835726,1777,3,2,2,0,0,0,0,0 48
+39,SEND,B_RESTART,1452,1458,5,Ongoing,-,-,7,none,-,-1,-1,1791177837997,-1,-1,6,0,0,0,0,0,0,0 0 0
+40,COMMIT,A_ABORT_REWIND,1568,1577,4,Ongoing,-,-,7,none,-,-1,-1,1791177840380,-1,-1,5,0,0,0,0,0,0,0 0 0
+41,SEND,A_ABORT_REWIND,1913,1918,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,3,abort_rewind,-,-1,-1,1791177842737,1791177844590,1853,3,3,2,0,0,0,0,0 0 0
+42,COMMIT,B_RESTART,305,311,3,Ongoing,-,-,4,none,-,-1,-1,1791177845452,-1,-1,5,0,0,0,0,0,0,0 0 0
+43,SEND,B_RESTART,1543,1552,4,Ongoing,-,InvalidTxnStateException,114,restart,-,132,100,1791177846341,1791177847920,1579,3,3,3,0,0,0,0,0 51 48
+44,COMMIT,A_ABORT_REWIND,108,116,6,Ongoing,-,-,2,none,-,-1,-1,1791177849487,-1,-1,5,0,0,0,0,0,0,0 0 0
+45,SEND,A_ABORT_REWIND,1426,1435,4,Ongoing,-,-,7,none,-,-1,-1,1791177850332,-1,-1,6,0,0,0,0,0,0,0 0 0
+46,COMMIT,B_RESTART,345,359,9,Ongoing,-,-,4,none,-,-1,-1,1791177852532,-1,-1,5,0,0,0,0,0,0,0 0 0
+47,SEND,B_RESTART,537,547,7,Ongoing,-,-,10,none,-,-1,-1,1791177853638,-1,-1,6,0,0,0,0,0,0,0 0 0
+48,COMMIT,A_ABORT_REWIND,2579,2609,27,CompleteAbort,-,InvalidTxnStateException,2,abort_failed_restart,KafkaException,115,100,1791177854976,1791177856787,1811,3,2,2,0,0,0,0,0 48
+49,SEND,A_ABORT_REWIND,880,890,5,Ongoing,-,-,7,none,-,-1,-1,1791177858877,-1,-1,6,0,0,0,0,0,0,0 0 0
+50,COMMIT,B_RESTART,2978,2986,3,CompleteAbort,-,InvalidTxnStateException,1,restart,-,113,100,1791177860520,1791177862284,1764,3,2,2,0,0,0,0,0 48
+51,SEND,B_RESTART,2026,2037,6,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,restart,-,117,100,1791177864964,1791177866640,1676,3,3,2,0,0,0,0,0 0
+52,COMMIT,A_ABORT_REWIND,1519,1529,5,Ongoing,-,-,4,none,-,-1,-1,1791177868255,-1,-1,5,0,0,0,0,0,0,0 0 0
+53,SEND,A_ABORT_REWIND,402,406,3,Ongoing,-,-,4,none,-,-1,-1,1791177870552,-1,-1,6,0,0,0,0,0,0,0 0 0
+54,COMMIT,B_RESTART,2237,2246,4,CompleteAbort,-,InvalidTxnStateException,2,restart,-,115,100,1791177871680,1791177873639,1959,3,2,2,0,0,0,0,0 48
+55,SEND,B_RESTART,598,608,5,Ongoing,-,-,8,none,-,-1,-1,1791177875356,-1,-1,6,0,0,0,0,0,0,0 0 0
+56,COMMIT,A_ABORT_REWIND,300,312,7,Ongoing,-,-,6,none,-,-1,-1,1791177876562,-1,-1,5,0,0,0,0,0,0,0 0 0
+57,SEND,A_ABORT_REWIND,1355,1363,7,Ongoing,-,-,9,none,-,-1,-1,1791177877621,-1,-1,6,0,0,0,0,0,0,0 0 0
+58,COMMIT,B_RESTART,697,705,3,Ongoing,-,-,2,none,-,-1,-1,1791177879767,-1,-1,5,0,0,0,0,0,0,0 0 0
+59,SEND,B_RESTART,521,529,3,Ongoing,-,-,4,none,-,-1,-1,1791177881223,-1,-1,6,0,0,0,0,0,0,0 0 0
+60,COMMIT,A_ABORT_REWIND,2514,2544,27,CompleteAbort,-,InvalidTxnStateException,28,abort_failed_restart,KafkaException,132,100,1791177882532,1791177884490,1958,3,2,2,0,0,0,0,0 48
+61,SEND,A_ABORT_REWIND,2492,2503,10,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,4,abort_rewind,-,-1,-1,1791177886372,1791177888356,1984,3,3,2,0,0,0,0,0 0 0
+62,COMMIT,B_RESTART,525,535,5,Ongoing,-,-,2,none,-,-1,-1,1791177889633,-1,-1,5,0,0,0,0,0,0,0 0 0
+63,SEND,B_RESTART,577,583,4,Ongoing,-,-,6,none,-,-1,-1,1791177890926,-1,-1,6,0,0,0,0,0,0,0 0 0
+64,COMMIT,A_ABORT_REWIND,1913,1919,5,CompleteAbort,-,InvalidTxnStateException,4,abort_failed_restart,KafkaException,119,100,1791177892239,1791177893857,1618,3,2,2,0,0,0,0,0 48
+65,SEND,A_ABORT_REWIND,1550,1557,4,Ongoing,-,-,5,none,-,-1,-1,1791177895550,-1,-1,6,0,0,0,0,0,0,0 0 0
+66,COMMIT,B_RESTART,1433,1441,3,Ongoing,-,-,2,none,-,-1,-1,1791177897678,-1,-1,5,0,0,0,0,0,0,0 0 0
+67,SEND,B_RESTART,2806,2816,5,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,restart,-,112,100,1791177899868,1791177901718,1850,3,3,2,0,0,0,0,0 0
+68,COMMIT,A_ABORT_REWIND,7,14,7,Ongoing,-,-,4,none,-,-1,-1,1791177904097,-1,-1,5,0,0,0,0,0,0,0 0 0
+69,SEND,A_ABORT_REWIND,83,93,6,Ongoing,-,-,7,none,-,-1,-1,1791177904824,-1,-1,6,0,0,0,0,0,0,0 0 0
+70,COMMIT,B_RESTART,2300,2310,5,CompleteAbort,-,InvalidTxnStateException,2,restart,-,116,100,1791177905645,1791177907600,1955,3,2,2,0,0,0,0,0 48
+71,SEND,B_RESTART,455,464,4,Ongoing,-,-,4,none,-,-1,-1,1791177909224,-1,-1,6,0,0,0,0,0,0,0 0 0
+72,COMMIT,A_ABORT_REWIND,159,165,5,Ongoing,-,-,5,none,-,-1,-1,1791177910415,-1,-1,5,0,0,0,0,0,0,0 0 0
+73,SEND,A_ABORT_REWIND,2074,2082,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791177911322,1791177913096,1774,3,3,2,0,0,0,0,0 0 0
+74,COMMIT,B_RESTART,1155,1163,5,Ongoing,-,-,5,none,-,-1,-1,1791177914160,-1,-1,5,0,0,0,0,0,0,0 0 0
+75,SEND,B_RESTART,1133,1143,5,Ongoing,-,-,4,none,-,-1,-1,1791177916106,-1,-1,6,0,0,0,0,0,0,0 0 0
+76,COMMIT,A_ABORT_REWIND,1855,1861,3,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,112,100,1791177917851,1791177919456,1605,3,2,2,0,0,0,0,0 48
+77,SEND,A_ABORT_REWIND,2446,2453,2,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,abort_rewind,-,-1,-1,1791177921111,1791177922956,1845,3,3,2,0,0,0,0,0 0 0
+78,COMMIT,B_RESTART,2721,2728,5,CompleteAbort,-,InvalidTxnStateException,3,restart,-,119,100,1791177924344,1791177925958,1614,3,2,2,0,0,0,0,0 48
+79,SEND,B_RESTART,1354,1462,89,Ongoing,-,-,63,none,-,-1,-1,1791177928331,-1,-1,6,0,0,0,0,0,0,0 0 0
+80,COMMIT,A_ABORT_REWIND,775,782,4,Ongoing,-,-,2,none,-,-1,-1,1791177930717,-1,-1,5,0,0,0,0,0,0,0 0 0
+81,SEND,A_ABORT_REWIND,1002,1013,6,Ongoing,-,-,8,none,-,-1,-1,1791177932233,-1,-1,6,0,0,0,0,0,0,0 0 0
+82,COMMIT,B_RESTART,1824,1833,8,CompleteAbort,-,InvalidTxnStateException,3,restart,-,119,100,1791177933998,1791177935819,1821,3,2,2,0,0,0,0,0 48
+83,SEND,B_RESTART,92,96,3,Ongoing,-,-,4,none,-,-1,-1,1791177937250,-1,-1,6,0,0,0,0,0,0,0 0 0
+84,COMMIT,A_ABORT_REWIND,297,306,4,Ongoing,-,-,2,none,-,-1,-1,1791177938051,-1,-1,5,0,0,0,0,0,0,0 0 0
+85,SEND,A_ABORT_REWIND,624,630,5,Ongoing,-,-,6,none,-,-1,-1,1791177939084,-1,-1,6,0,0,0,0,0,0,0 0 0
+86,COMMIT,B_RESTART,663,672,4,Ongoing,-,-,4,none,-,-1,-1,1791177940486,-1,-1,5,0,0,0,0,0,0,0 0 0
+87,SEND,B_RESTART,793,800,3,Ongoing,-,-,4,none,-,-1,-1,1791177941891,-1,-1,6,0,0,0,0,0,0,0 0 0
+88,COMMIT,A_ABORT_REWIND,1196,1204,7,Ongoing,-,-,7,none,-,-1,-1,1791177943416,-1,-1,5,0,0,0,0,0,0,0 0 0
+89,SEND,A_ABORT_REWIND,1631,1638,3,Ongoing,-,-,3,none,-,-1,-1,1791177945403,-1,-1,6,0,0,0,0,0,0,0 0 0
+90,COMMIT,B_RESTART,2249,2259,5,CompleteAbort,-,InvalidTxnStateException,3,restart,-,138,100,1791177947627,1791177949188,1561,3,2,2,0,0,0,0,0 48
+91,SEND,B_RESTART,1476,1487,7,Ongoing,-,-,6,none,-,-1,-1,1791177951359,-1,-1,6,0,0,0,0,0,0,0 0 0
+92,COMMIT,A_ABORT_REWIND,2516,2524,5,CompleteAbort,-,InvalidTxnStateException,2,abort_failed_restart,KafkaException,116,100,1791177953581,1791177955187,1606,3,2,2,0,0,0,0,0 48
+93,SEND,A_ABORT_REWIND,1201,1214,8,Ongoing,-,-,10,none,-,-1,-1,1791177957331,-1,-1,6,0,0,0,0,0,0,0 0 0
+94,COMMIT,B_RESTART,171,175,3,Ongoing,-,-,1,none,-,-1,-1,1791177959267,-1,-1,5,0,0,0,0,0,0,0 0 0
+95,SEND,B_RESTART,995,1003,3,Ongoing,-,-,4,none,-,-1,-1,1791177960165,-1,-1,6,0,0,0,0,0,0,0 0 0
+96,COMMIT,A_ABORT_REWIND,1905,1914,4,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,119,100,1791177961871,1791177963547,1676,3,2,2,0,0,0,0,0 48
+97,SEND,A_ABORT_REWIND,1515,1523,4,Ongoing,-,-,6,none,-,-1,-1,1791177965220,-1,-1,6,0,0,0,0,0,0,0 0 0
+98,COMMIT,B_RESTART,1371,1380,5,Ongoing,-,-,3,none,-,-1,-1,1791177967456,-1,-1,5,0,0,0,0,0,0,0 0 0
+99,SEND,B_RESTART,2461,2473,8,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,5,restart,-,126,100,1791177969580,1791177971548,1968,3,3,2,0,0,0,0,0 0
+100,COMMIT,A_ABORT_REWIND,2072,2092,17,CompleteAbort,-,InvalidTxnStateException,3,abort_failed_restart,KafkaException,115,100,1791177973521,1791177975052,1531,3,2,2,0,0,0,0,0 48
+101,SEND,A_ABORT_REWIND,1949,1962,8,PrepareAbort,InvalidProducerEpochException,InvalidProducerEpochException,3,abort_rewind,-,-1,-1,1791177977060,1791177979047,1987,3,3,2,0,0,0,0,0 0 0
+102,COMMIT,B_RESTART,1650,1657,3,Ongoing,-,-,1,none,-,-1,-1,1791177979819,-1,-1,5,0,0,0,0,0,0,0 0 0
+103,SEND,B_RESTART,938,947,5,Ongoing,-,-,9,none,-,-1,-1,1791177982228,-1,-1,6,0,0,0,0,0,0,0 0 0
+104,COMMIT,A_ABORT_REWIND,582,782,200,Ongoing,-,-,10,none,-,-1,-1,1791177983914,-1,-1,5,0,0,0,0,0,0,0 0 0
+105,SEND,A_ABORT_REWIND,1145,1154,4,Ongoing,-,-,5,none,-,-1,-1,1791177985630,-1,-1,6,0,0,0,0,0,0,0 0 0
+106,COMMIT,B_RESTART,298,306,5,Ongoing,-,-,1,none,-,-1,-1,1791177987362,-1,-1,5,0,0,0,0,0,0,0 0 0
+107,SEND,B_RESTART,2123,2137,9,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,5,restart,-,121,100,1791177988402,1791177990376,1974,3,3,2,0,0,0,0,0 0
+108,COMMIT,A_ABORT_REWIND,724,733,4,Ongoing,-,-,3,none,-,-1,-1,1791177991963,-1,-1,5,0,0,0,0,0,0,0 0 0
+109,SEND,A_ABORT_REWIND,2064,2083,15,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,11,abort_rewind,-,-1,-1,1791177993454,1791177995378,1924,3,3,2,0,0,0,0,0 0 0
+110,COMMIT,B_RESTART,2519,2527,3,CompleteAbort,-,InvalidTxnStateException,1,restart,-,115,100,1791177996216,1791177997765,1549,3,2,2,0,0,0,0,0 48
+111,SEND,B_RESTART,548,552,3,Ongoing,-,-,5,none,-,-1,-1,1791178000130,-1,-1,6,0,0,0,0,0,0,0 0 0
+112,COMMIT,A_ABORT_REWIND,922,928,6,Ongoing,-,-,4,none,-,-1,-1,1791178001420,-1,-1,5,0,0,0,0,0,0,0 0 0
+113,SEND,A_ABORT_REWIND,2375,2383,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791178003158,1791178004766,1608,3,3,2,0,0,0,0,0 0 0
+114,COMMIT,B_RESTART,2168,2174,2,CompleteAbort,-,InvalidTxnStateException,1,restart,-,110,100,1791178006165,1791178008124,1959,3,2,2,0,0,0,0,0 48
+115,SEND,B_RESTART,103,112,4,Ongoing,-,-,8,none,-,-1,-1,1791178009721,-1,-1,6,0,0,0,0,0,0,0 0 0
+116,COMMIT,A_ABORT_REWIND,1911,1922,6,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,114,100,1791178010548,1791178012126,1578,3,2,2,0,0,0,0,0 48
+117,SEND,A_ABORT_REWIND,2490,2500,5,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,3,abort_rewind,-,-1,-1,1791178013868,1791178015629,1761,3,3,2,0,0,0,0,0 0 0
+118,COMMIT,B_RESTART,743,751,3,Ongoing,-,-,2,none,-,-1,-1,1791178016965,-1,-1,5,0,0,0,0,0,0,0 0 0
+119,SEND,B_RESTART,1215,1223,3,Ongoing,-,-,5,none,-,-1,-1,1791178018427,-1,-1,6,0,0,0,0,0,0,0 0 0
+120,COMMIT,A_ABORT_REWIND,2770,2776,4,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,118,100,1791178020425,1791178021987,1562,3,2,2,0,0,0,0,0 48
+121,SEND,A_ABORT_REWIND,448,459,8,Ongoing,-,-,16,none,-,-1,-1,1791178024629,-1,-1,6,0,0,0,0,0,0,0 0 0
+122,COMMIT,B_RESTART,668,676,3,Ongoing,-,-,3,none,-,-1,-1,1791178025899,-1,-1,5,0,0,0,0,0,0,0 0 0
+123,SEND,B_RESTART,1949,1971,18,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,4,restart,-,114,100,1791178027177,1791178028868,1691,3,3,2,0,0,0,0,0 0
+124,COMMIT,A_ABORT_REWIND,2885,2896,8,CompleteAbort,-,InvalidTxnStateException,4,abort_failed_restart,KafkaException,124,100,1791178030564,1791178032374,1810,3,2,2,0,0,0,0,0 48
+125,SEND,A_ABORT_REWIND,555,564,5,Ongoing,-,-,10,none,-,-1,-1,1791178035532,-1,-1,6,0,0,0,0,0,0,0 0 0
+126,COMMIT,B_RESTART,1475,1482,2,Ongoing,-,-,2,none,-,-1,-1,1791178036696,-1,-1,5,0,0,0,0,0,0,0 0 0
+127,SEND,B_RESTART,2536,2542,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,restart,-,118,100,1791178038908,1791178040726,1818,3,3,2,0,0,0,0,0 0
+128,COMMIT,A_ABORT_REWIND,950,959,4,Ongoing,-,-,2,none,-,-1,-1,1791178042865,-1,-1,5,0,0,0,0,0,0,0 0 0
+129,SEND,A_ABORT_REWIND,1230,1236,3,Ongoing,-,-,4,none,-,-1,-1,1791178044569,-1,-1,6,0,0,0,0,0,0,0 0 0
+130,COMMIT,B_RESTART,2778,2788,5,CompleteAbort,-,InvalidTxnStateException,1,restart,-,113,100,1791178046390,1791178048044,1654,3,2,2,0,0,0,0,0 48
+131,SEND,B_RESTART,1436,1443,2,Ongoing,-,-,5,none,-,-1,-1,1791178050617,-1,-1,6,0,0,0,0,0,0,0 0 0
+132,COMMIT,A_ABORT_REWIND,1278,1285,6,Ongoing,-,-,3,none,-,-1,-1,1791178052796,-1,-1,5,0,0,0,0,0,0,0 0 0
+133,SEND,A_ABORT_REWIND,1893,1898,2,Ongoing,-,-,3,none,-,-1,-1,1791178054917,-1,-1,6,0,0,0,0,0,0,0 0 0
+134,COMMIT,B_RESTART,730,737,2,Ongoing,-,-,1,none,-,-1,-1,1791178057408,-1,-1,5,0,0,0,0,0,0,0 0 0
+135,SEND,B_RESTART,1974,1981,6,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,3,restart,-,115,100,1791178058891,1791178060410,1519,3,3,2,0,0,0,0,0 0
+136,COMMIT,A_ABORT_REWIND,2942,2953,6,CompleteAbort,-,InvalidTxnStateException,2,abort_failed_restart,KafkaException,115,100,1791178062255,1791178063911,1656,3,2,2,0,0,0,0,0 48
+137,SEND,A_ABORT_REWIND,5,10,5,Ongoing,-,-,6,none,-,-1,-1,1791178066438,-1,-1,6,0,0,0,0,0,0,0 0 0
+138,COMMIT,B_RESTART,59,73,9,Ongoing,-,-,7,none,-,-1,-1,1791178067231,-1,-1,5,0,0,0,0,0,0,0 0 0
+139,SEND,B_RESTART,904,913,4,Ongoing,-,-,3,none,-,-1,-1,1791178068035,-1,-1,6,0,0,0,0,0,0,0 0 0
+140,COMMIT,A_ABORT_REWIND,2598,2620,18,CompleteAbort,-,InvalidTxnStateException,5,abort_failed_restart,KafkaException,222,100,1791178069719,1791178071264,1545,3,2,2,0,0,0,0,0 48
+141,SEND,A_ABORT_REWIND,1388,1398,5,Ongoing,-,-,6,none,-,-1,-1,1791178073887,-1,-1,6,0,0,0,0,0,0,0 0 0
+142,COMMIT,B_RESTART,1819,1834,10,CompleteAbort,-,InvalidTxnStateException,2,restart,-,117,100,1791178075992,1791178077622,1630,3,2,2,0,0,0,0,0 48
+143,SEND,B_RESTART,1826,1834,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,restart,-,116,100,1791178079055,1791178080623,1568,3,3,2,0,0,0,0,0 0
+144,COMMIT,A_ABORT_REWIND,1271,1281,7,Ongoing,-,-,4,none,-,-1,-1,1791178082269,-1,-1,5,0,0,0,0,0,0,0 0 0
+145,SEND,A_ABORT_REWIND,2946,2955,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791178084271,1791178085982,1711,3,3,2,0,0,0,0,0 0 0
+146,COMMIT,B_RESTART,1576,1584,3,Ongoing,-,-,2,none,-,-1,-1,1791178087829,-1,-1,5,0,0,0,0,0,0,0 0 0
+147,SEND,B_RESTART,2413,2417,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,restart,-,111,100,1791178090162,1791178091982,1820,3,3,2,0,0,0,0,0 0
+148,COMMIT,A_ABORT_REWIND,928,935,5,Ongoing,-,-,2,none,-,-1,-1,1791178093941,-1,-1,5,0,0,0,0,0,0,0 0 0
+149,SEND,A_ABORT_REWIND,2625,2629,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,abort_rewind,-,-1,-1,1791178095645,1791178097346,1701,3,3,2,0,0,0,0,0 0 0
+150,COMMIT,B_RESTART,955,958,2,Ongoing,-,-,1,none,-,-1,-1,1791178098888,-1,-1,5,0,0,0,0,0,0,0 0 0
+151,SEND,B_RESTART,1687,1696,4,Ongoing,-,-,4,none,-,-1,-1,1791178100594,-1,-1,6,0,0,0,0,0,0,0 0 0
+152,COMMIT,A_ABORT_REWIND,2260,2268,3,CompleteAbort,-,InvalidTxnStateException,2,abort_failed_restart,KafkaException,110,100,1791178103028,1791178104846,1818,3,2,2,0,0,0,0,0 48
+153,SEND,A_ABORT_REWIND,2094,2099,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791178106582,1791178108212,1630,3,3,2,0,0,0,0,0 0 0
+154,COMMIT,B_RESTART,2261,2268,3,CompleteAbort,-,InvalidTxnStateException,1,restart,-,116,100,1791178109451,1791178111207,1756,3,2,2,0,0,0,0,0 48
+155,SEND,B_RESTART,2240,2256,9,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,6,restart,-,129,100,1791178113116,1791178114708,1592,3,3,2,0,0,0,0,0 0
+156,COMMIT,A_ABORT_REWIND,1830,1836,4,Ongoing,-,-,1,none,-,-1,-1,1791178116624,-1,-1,5,0,0,0,0,0,0,0 0 0
+157,SEND,A_ABORT_REWIND,2067,2074,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791178119181,1791178121058,1877,3,3,2,0,0,0,0,0 0 0
+158,COMMIT,B_RESTART,2274,2288,13,CompleteAbort,-,InvalidTxnStateException,4,restart,-,126,100,1791178122001,1791178123558,1557,3,2,2,0,0,0,0,0 48
+159,SEND,B_RESTART,323,326,3,Ongoing,-,-,4,none,-,-1,-1,1791178125737,-1,-1,6,0,0,0,0,0,0,0 0 0
+160,COMMIT,A_ABORT_REWIND,533,541,4,Ongoing,-,-,6,none,-,-1,-1,1791178126673,-1,-1,5,0,0,0,0,0,0,0 0 0
+161,SEND,A_ABORT_REWIND,1485,1492,3,Ongoing,-,-,4,none,-,-1,-1,1791178127925,-1,-1,6,0,0,0,0,0,0,0 0 0
+162,COMMIT,B_RESTART,1307,1316,4,Ongoing,-,-,1,none,-,-1,-1,1791178130175,-1,-1,5,0,0,0,0,0,0,0 0 0
+163,SEND,B_RESTART,1040,1046,3,Ongoing,-,-,4,none,-,-1,-1,1791178132212,-1,-1,6,0,0,0,0,0,0,0 0 0
+164,COMMIT,A_ABORT_REWIND,1228,1235,4,Ongoing,-,-,1,none,-,-1,-1,1791178133981,-1,-1,5,0,0,0,0,0,0,0 0 0
+165,SEND,A_ABORT_REWIND,2952,2958,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791178135954,1791178137771,1817,3,3,2,0,0,0,0,0 0 0
+166,COMMIT,B_RESTART,175,185,7,Ongoing,-,-,6,none,-,-1,-1,1791178139529,-1,-1,5,0,0,0,0,0,0,0 0 0
+167,SEND,B_RESTART,1615,1619,3,Ongoing,-,-,5,none,-,-1,-1,1791178140459,-1,-1,6,0,0,0,0,0,0,0 0 0
+168,COMMIT,A_ABORT_REWIND,2397,2404,5,CompleteAbort,-,InvalidTxnStateException,7,abort_failed_restart,KafkaException,235,100,1791178142796,1791178144768,1972,3,2,2,0,0,0,0,0 48
+169,SEND,A_ABORT_REWIND,746,755,4,Ongoing,-,-,7,none,-,-1,-1,1791178146747,-1,-1,6,0,0,0,0,0,0,0 0 0
+170,COMMIT,B_RESTART,2900,2908,3,CompleteAbort,-,InvalidTxnStateException,1,restart,-,116,100,1791178148266,1791178150129,1863,3,2,2,0,0,0,0,0 48
+171,SEND,B_RESTART,683,691,5,Ongoing,-,-,6,none,-,-1,-1,1791178152589,-1,-1,6,0,0,0,0,0,0,0 0 0
+172,COMMIT,A_ABORT_REWIND,2763,2774,6,CompleteAbort,-,InvalidTxnStateException,4,abort_failed_restart,KafkaException,122,100,1791178154001,1791178155631,1630,3,2,2,0,0,0,0,0 48
+173,SEND,A_ABORT_REWIND,1628,1635,2,Ongoing,-,-,4,none,-,-1,-1,1791178158011,-1,-1,6,0,0,0,0,0,0,0 0 0
+174,COMMIT,B_RESTART,2723,2731,3,CompleteAbort,-,InvalidTxnStateException,1,restart,-,112,100,1791178160384,1791178161989,1605,3,2,2,0,0,0,0,0 48
+175,SEND,B_RESTART,1996,2009,12,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,3,restart,-,132,100,1791178164665,1791178166346,1681,3,3,2,0,0,0,0,0 0
+176,COMMIT,A_ABORT_REWIND,996,1006,5,Ongoing,-,-,3,none,-,-1,-1,1791178167973,-1,-1,5,0,0,0,0,0,0,0 0 0
+177,SEND,A_ABORT_REWIND,2288,2299,9,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791178169699,1791178171348,1649,3,3,2,0,0,0,0,0 0 0
+178,COMMIT,B_RESTART,1384,1393,8,Ongoing,-,-,7,none,-,-1,-1,1791178172750,-1,-1,5,0,0,0,0,0,0,0 0 0
+179,SEND,B_RESTART,1585,1592,2,Ongoing,-,-,3,none,-,-1,-1,1791178174892,-1,-1,6,0,0,0,0,0,0,0 0 0
+180,COMMIT,A_ABORT_REWIND,903,914,6,Ongoing,-,-,3,none,-,-1,-1,1791178177052,-1,-1,5,0,0,0,0,0,0,0 0 0
+181,SEND,A_ABORT_REWIND,816,824,3,Ongoing,-,-,5,none,-,-1,-1,1791178178694,-1,-1,6,0,0,0,0,0,0,0 0 0
+182,COMMIT,B_RESTART,2523,2527,2,CompleteAbort,-,InvalidTxnStateException,1,restart,-,118,100,1791178180226,1791178182205,1979,3,2,2,0,0,0,0,0 48
+183,SEND,B_RESTART,556,575,14,Ongoing,-,-,8,none,-,-1,-1,1791178184195,-1,-1,6,0,0,0,0,0,0,0 0 0
+184,COMMIT,A_ABORT_REWIND,1872,1878,3,Ongoing,-,-,2,none,-,-1,-1,1791178185586,-1,-1,5,0,0,0,0,0,0,0 0 0
+185,SEND,A_ABORT_REWIND,948,956,3,Ongoing,-,-,4,none,-,-1,-1,1791178188071,-1,-1,6,0,0,0,0,0,0,0 0 0
+186,COMMIT,B_RESTART,1659,1664,3,Ongoing,-,-,1,none,-,-1,-1,1791178189784,-1,-1,5,0,0,0,0,0,0,0 0 0
+187,SEND,B_RESTART,57,62,4,Ongoing,-,-,4,none,-,-1,-1,1791178192174,-1,-1,6,0,0,0,0,0,0,0 0 0
+188,COMMIT,A_ABORT_REWIND,1804,1812,3,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,112,100,1791178192947,1791178194563,1616,3,2,2,0,0,0,0,0 48
+189,SEND,A_ABORT_REWIND,23,30,2,Ongoing,-,-,5,none,-,-1,-1,1791178196110,-1,-1,6,0,0,0,0,0,0,0 0 0
+190,COMMIT,B_RESTART,291,298,2,Ongoing,-,-,2,none,-,-1,-1,1791178196683,-1,-1,5,0,0,0,0,0,0,0 0 0
+191,SEND,B_RESTART,1718,1724,2,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,restart,-,108,100,1791178197671,1791178199417,1746,3,3,2,0,0,0,0,0 0
+192,COMMIT,A_ABORT_REWIND,320,327,2,Ongoing,-,-,1,none,-,-1,-1,1791178200767,-1,-1,5,0,0,0,0,0,0,0 0 0
+193,SEND,A_ABORT_REWIND,2671,2676,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,4,abort_rewind,-,-1,-1,1791178201786,1791178203416,1630,3,3,2,0,0,0,0,0 0 0
+194,COMMIT,B_RESTART,413,415,2,Ongoing,-,-,1,none,-,-1,-1,1791178205292,-1,-1,5,0,0,0,0,0,0,0 0 0
+195,SEND,B_RESTART,984,992,2,Ongoing,-,-,5,none,-,-1,-1,1791178206249,-1,-1,6,0,0,0,0,0,0,0 0 0
+196,COMMIT,A_ABORT_REWIND,1692,1696,3,Ongoing,-,-,1,none,-,-1,-1,1791178207979,-1,-1,5,0,0,0,0,0,0,0 0 0
+197,SEND,A_ABORT_REWIND,1095,1105,5,Ongoing,-,-,3,none,-,-1,-1,1791178210419,-1,-1,6,0,0,0,0,0,0,0 0 0
+198,COMMIT,B_RESTART,1071,1080,4,Ongoing,-,-,1,none,-,-1,-1,1791178212286,-1,-1,5,0,0,0,0,0,0,0 0 0
+199,SEND,B_RESTART,2166,2174,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,restart,-,114,100,1791178214128,1791178215767,1639,3,3,2,0,0,0,0,0 0
+200,COMMIT,A_ABORT_REWIND,1673,1679,3,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,118,100,1791178217524,1791178219088,1564,3,2,2,0,0,0,0,0 48
+201,SEND,A_ABORT_REWIND,2612,2620,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,abort_rewind,-,-1,-1,1791178220631,1791178222587,1956,3,3,2,0,0,0,0,0 0 0
+202,COMMIT,B_RESTART,1484,1491,2,Ongoing,-,-,1,none,-,-1,-1,1791178223994,-1,-1,5,0,0,0,0,0,0,0 0 0
+203,SEND,B_RESTART,1855,1863,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,restart,-,117,100,1791178226078,1791178227930,1852,3,3,2,0,0,0,0,0 0
+204,COMMIT,A_ABORT_REWIND,2270,2278,3,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,113,100,1791178229301,1791178230930,1629,3,2,2,0,0,0,0,0 48
+205,SEND,A_ABORT_REWIND,1631,1644,8,Ongoing,-,-,11,none,-,-1,-1,1791178232962,-1,-1,6,0,0,0,0,0,0,0 0 0
+206,COMMIT,B_RESTART,2772,2777,3,CompleteAbort,-,InvalidTxnStateException,5,restart,-,114,100,1791178235345,1791178237294,1949,3,2,2,0,0,0,0,0 48
+207,SEND,B_RESTART,2437,2444,2,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,restart,-,112,100,1791178239377,1791178241289,1912,3,3,2,0,0,0,0,0 0
+208,COMMIT,A_ABORT_REWIND,2401,2421,19,CompleteAbort,-,InvalidTxnStateException,17,abort_failed_restart,KafkaException,121,100,1791178243224,1791178244789,1565,3,2,2,0,0,0,0,0 48
+209,SEND,A_ABORT_REWIND,736,744,4,Ongoing,-,-,4,none,-,-1,-1,1791178246895,-1,-1,6,0,0,0,0,0,0,0 0 0
+210,COMMIT,B_RESTART,1450,1459,4,Ongoing,-,-,3,none,-,-1,-1,1791178248358,-1,-1,5,0,0,0,0,0,0,0 0 0
+211,SEND,B_RESTART,956,964,3,Ongoing,-,-,4,none,-,-1,-1,1791178250562,-1,-1,6,0,0,0,0,0,0,0 0 0
+212,COMMIT,A_ABORT_REWIND,2427,2432,4,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,115,100,1791178252238,1791178254136,1898,3,2,2,0,0,0,0,0 48
+213,SEND,A_ABORT_REWIND,746,756,5,Ongoing,-,-,5,none,-,-1,-1,1791178256084,-1,-1,6,0,0,0,0,0,0,0 0 0
+214,COMMIT,B_RESTART,510,523,8,Ongoing,-,-,2,none,-,-1,-1,1791178257452,-1,-1,5,0,0,0,0,0,0,0 0 0
+215,SEND,B_RESTART,347,356,4,Ongoing,-,-,3,none,-,-1,-1,1791178258688,-1,-1,6,0,0,0,0,0,0,0 0 0
+216,COMMIT,A_ABORT_REWIND,672,847,172,Ongoing,-,-,14,none,-,-1,-1,1791178259752,-1,-1,5,0,0,0,0,0,0,0 0 0
+217,SEND,A_ABORT_REWIND,1798,1807,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,3,abort_rewind,-,-1,-1,1791178261441,1791178262996,1555,3,3,2,0,0,0,0,0 0 0
+218,COMMIT,B_RESTART,2261,2321,57,CompleteAbort,-,InvalidTxnStateException,3,restart,-,118,100,1791178264028,1791178265994,1966,3,2,2,0,0,0,0,0 48
+219,SEND,B_RESTART,2260,2265,5,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,6,restart,-,116,100,1791178267605,1791178269345,1740,3,3,2,0,0,0,0,0 0
+220,COMMIT,A_ABORT_REWIND,2236,2241,3,CompleteAbort,-,InvalidTxnStateException,1,abort_failed_restart,KafkaException,116,100,1791178271292,1791178272846,1554,3,2,2,0,0,0,0,0 48
+221,SEND,A_ABORT_REWIND,408,415,6,Ongoing,-,-,8,none,-,-1,-1,1791178275101,-1,-1,6,0,0,0,0,0,0,0 0 0
+222,COMMIT,B_RESTART,922,934,7,Ongoing,-,-,5,none,-,-1,-1,1791178276286,-1,-1,5,0,0,0,0,0,0,0 0 0
+223,SEND,B_RESTART,2167,2175,4,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,restart,-,112,100,1791178277981,1791178279703,1722,3,3,2,0,0,0,0,0 0
+224,COMMIT,A_ABORT_REWIND,743,747,3,Ongoing,-,-,2,none,-,-1,-1,1791178281627,-1,-1,5,0,0,0,0,0,0,0 0 0
+225,SEND,A_ABORT_REWIND,1288,1302,8,Ongoing,-,-,18,none,-,-1,-1,1791178283153,-1,-1,6,0,0,0,0,0,0,0 0 0
+226,COMMIT,B_RESTART,485,490,5,Ongoing,-,-,2,none,-,-1,-1,1791178285274,-1,-1,5,0,0,0,0,0,0,0 0 0
+227,SEND,B_RESTART,2308,2311,2,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,restart,-,160,100,1791178286365,1791178288093,1728,3,3,2,0,0,0,0,0 0
+228,COMMIT,A_ABORT_REWIND,2031,2039,4,CompleteAbort,-,InvalidTxnStateException,2,abort_failed_restart,KafkaException,114,100,1791178290165,1791178292093,1928,3,2,2,0,0,0,0,0 48
+229,SEND,A_ABORT_REWIND,1336,1346,5,Ongoing,-,-,4,none,-,-1,-1,1791178293590,-1,-1,6,0,0,0,0,0,0,0 0 0
+230,COMMIT,B_RESTART,2424,2435,6,CompleteAbort,-,InvalidTxnStateException,3,restart,-,130,100,1791178295685,1791178297446,1761,3,2,2,0,0,0,0,0 48
+231,SEND,B_RESTART,1219,1227,4,Ongoing,-,-,5,none,-,-1,-1,1791178299371,-1,-1,6,0,0,0,0,0,0,0 0 0
+232,COMMIT,A_ABORT_REWIND,336,343,2,Ongoing,-,-,1,none,-,-1,-1,1791178301407,-1,-1,5,0,0,0,0,0,0,0 0 0
+233,SEND,A_ABORT_REWIND,1706,1723,13,Ongoing,-,-,10,none,-,-1,-1,1791178302464,-1,-1,6,0,0,0,0,0,0,0 0 0
+234,COMMIT,B_RESTART,2491,2604,108,CompleteAbort,-,InvalidTxnStateException,10,restart,-,254,100,1791178304991,1791178306805,1814,3,2,2,0,0,0,0,0 48
+235,SEND,B_RESTART,2119,2133,8,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,restart,-,115,100,1791178309351,1791178311303,1952,3,3,2,0,0,0,0,0 0
+236,COMMIT,A_ABORT_REWIND,1051,1060,4,Ongoing,-,-,2,none,-,-1,-1,1791178312883,-1,-1,5,0,0,0,0,0,0,0 0 0
+237,SEND,A_ABORT_REWIND,2179,2187,3,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,2,abort_rewind,-,-1,-1,1791178314683,1791178316678,1995,3,3,2,0,0,0,0,0 0 0
+238,COMMIT,B_RESTART,99,105,3,Ongoing,-,-,2,none,-,-1,-1,1791178317456,-1,-1,5,0,0,0,0,0,0,0 0 0
+239,SEND,B_RESTART,307,315,3,Ongoing,-,-,6,none,-,-1,-1,1791178318277,-1,-1,6,0,0,0,0,0,0,0 0 0

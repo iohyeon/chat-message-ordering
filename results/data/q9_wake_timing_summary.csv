@@ -1,0 +1,7 @@
+wake,state_before_wake,send_error,commit_outcome,n,pause_min_ms,pause_max_ms,dup_seqs,gaps,acked_lost,failed_stored
+COMMIT,CompleteAbort,-,InvalidTxnStateException,51,1550,2989,0,0,0,0
+COMMIT,Ongoing,-,commit_ok,69,7,1872,0,0,0,0
+SEND,CompleteAbort,InvalidProducerEpochException,InvalidProducerEpochException,41,1718,2952,0,0,0,0
+SEND,Ongoing,-,InvalidTxnStateException,1,1543,1543,0,0,0,0
+SEND,Ongoing,-,commit_ok,77,5,1893,0,0,0,0
+SEND,PrepareAbort,InvalidProducerEpochException,InvalidProducerEpochException,1,1949,1949,0,0,0,0

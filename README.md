@@ -1,6 +1,6 @@
 # chat-message-ordering
 
-채팅 메시지의 순번(`conversation_seq`)을 매기는 writer가 교체될 때, 이전 세대(epoch) writer, 즉 zombie writer의 쓰기를 **Kafka 브로커에서 막는 방식**과 **저장소에서 막는 방식**을 직접 재현해 비교한 저장소입니다. zombie writer는 lease를 잃은 것을 모른 채 깨어나 계속 쓰려는 writer로, KIP-98이 "zombie instance"라고 부르는 것과 같습니다. 이 문서에서는 이후 이전 세대 writer, 교체 뒤의 writer를 현재 writer라고 씁니다. Kafka 4.3.1 단일 브로커와 PostgreSQL 16을 Testcontainers로 띄우고 질문 8개를 JUnit 테스트 34개와 측정 코드로 확인했습니다. 브로커는 이전 세대 writer의 기록 요청을 **보내는 시점에 `InvalidProducerEpochException`** 으로 거부했고, 저장소의 조건부 `INSERT` 는 lease 교체와 20,000번 경쟁시켰을 때 **139번 같은 seq를 잃고 그때마다 현재 writer의 레코드가 버려졌습니다**(비교하는 행을 잠그는 `FOR SHARE` 와 `LOG_ORDER` 는 0번). 두 방식을 함께 써서 브로커 fencing에 lease 테이블 비교를 더하면, lease 교체 뒤 새 writer의 `initTransactions()` 전에 커밋된 정상 메시지를 교체 168번에서 **모두** 잃었습니다.
+채팅 메시지의 순번(`conversation_seq`)을 매기는 writer가 교체될 때, 이전 세대(epoch) writer, 즉 zombie writer의 쓰기를 **Kafka 브로커에서 막는 방식**과 **저장소에서 막는 방식**을 직접 재현해 비교한 저장소입니다. zombie writer는 lease를 잃은 것을 모른 채 깨어나 계속 쓰려는 writer로, KIP-98이 "zombie instance"라고 부르는 것과 같습니다. 이 문서에서는 이후 이전 세대 writer, 교체 뒤의 writer를 현재 writer라고 씁니다. Kafka 4.3.1 단일 브로커와 PostgreSQL 16을 Testcontainers로 띄우고 질문 9개를 JUnit 테스트 42개와 측정 코드로 확인했습니다. 브로커는 이전 세대 writer의 기록 요청을 **보내는 시점에 `InvalidProducerEpochException`** 으로 거부했고, 저장소의 조건부 `INSERT` 는 lease 교체와 20,000번 경쟁시켰을 때 **139번 같은 seq를 잃고 그때마다 현재 writer의 레코드가 버려졌습니다**(비교하는 행을 잠그는 `FOR SHARE` 와 `LOG_ORDER` 는 0번). 두 방식을 함께 써서 브로커 fencing에 lease 테이블 비교를 더하면, lease 교체 뒤 새 writer의 `initTransactions()` 전에 커밋된 정상 메시지를 교체 168번에서 **모두** 잃었습니다.
 
 확인한 질문은 다음과 같습니다.
 
@@ -12,6 +12,7 @@
 - 두 방식의 전달 지연, 처리량, 저장 비용, 교체 공백은 얼마인가
 - 저장소 fencing의 세 조건(로그 순서 기준, 비교하는 행의 잠금, 저장 뒤 응답)을 함께 쓰면 경쟁이 없어지는가, 응답은 얼마나 늦어지는가
 - 브로커 fencing에 저장소 세대 검사를 더하면 정상 메시지를 잃는가, 트랜잭션 producer가 많을 때 커밋 비용은 어떻게 늘어나는가
+- lease를 쥔 writer의 트랜잭션이 후임 없이 시간 초과로 중단되면 무슨 예외를 받는가, 새 producer로 다시 기동해도 안전한가
 
 ## Highlights
 
@@ -25,8 +26,9 @@
 | [Q6](results/Q6.md) 비용 | 두 방식의 지연, 처리량, 저장 비용, 교체 공백 | 커밋 주기, 트랜잭션당 레코드 수, 동시 연결 수를 바꿔 가며 3회 반복 측정 | 커밋 주기 100ms에서 `read_committed` p50 **52.6ms**, p99 **102.6ms**(멱등 기준선 p50 0.5ms, p99 12.2ms). 교체 뒤 수락 재개까지 브로커 방식 p50 **144.5ms**, 저장소 방식 **2.5ms**. 조건부 `INSERT` 와 `FOR SHARE` 는 단순 `INSERT` 와 반복 간 흔들림 안에서 구별되지 않음 |
 | [Q7](results/Q7.md) 저장소 fencing의 세 조건 | 로그 순서 기준에도 경쟁이 없는가, 저장 뒤 응답은 얼마나 늦는가 | `LOG_ORDER` 와 잠금을 뺀 대조군을 20,000번씩 경쟁시키고, 스냅숏 epoch로 거부를 나누고, 초당 1,000건에서 두 방식의 수락 지연을 같은 실행 안에서 번갈아 잼 | `LOG_ORDER` 경쟁 **0번**, 잠금을 뺀 대조군은 경쟁 구간을 넓히면 1,994번 중 **1,867번**. 저장 완료 p50 **0.83ms**, p99 **146.9ms**(브로커 fencing 커밋 주기 100ms: p50 53.0ms, p99 141.5ms). 한 대화 집중 부하의 처리량 하락은 fence 행 배타 잠금 때문(배타 잠금만 19%, 공유 잠금 86%) |
 | [Q8](results/Q8.md) 브로커 fencing과 저장소 세대 검사 | 두 방식을 함께 쓰면 정상 메시지를 잃는가, 커밋 비용 | 트랜잭션 producer 두 개와 `read_committed` 저장 워커 8개(비교 방식 4가지와 밀림 여부)가 같은 로그를 처리. 이전 writer의 커밋 시점을 바꿔 교체 600번, producer 64~1,024개와 커밋 주기 10~100ms | 잃음. 교체 뒤 init 전 커밋 168번(성공 응답 336건)을 `LEASE_EQ` 계열이 **모두** 잃고 같은 수의 빈자리가 생김. `LOG_ORDER` 와 세대 검사 없음은 **0건**, 순번 겹침 0번. 교체 1ms 안쪽 전에 끝난 커밋도 따라잡은 워커가 2~3건 잃음. 빈 트랜잭션은 커밋 요청이 없어 producer당 커밋은 10ms 주기에서도 초당 27~30번. producer 1,024개에서 이 환경이 포화되어 수락 p50 1.1~2.3초 |
+| [Q9](results/Q9.md) 시간 초과 뒤 재기동 | lease를 쥔 writer의 트랜잭션이 후임 없이 `transaction.timeout.ms` 로 중단되면 무슨 예외를 받는가, "lease가 있으면 새 producer로 재기동"이 안전한가 | 깨어나는 시점과 방식을 바꿔 240번, 재기동 중 lease가 넘어가는 경쟁을 처리 방식 네 가지로 200번 | 곧바로 commit하면 `InvalidTxnStateException`(fatal), 한 건 더 보내면 `InvalidProducerEpochException` 뒤 abort 성공. 처리 방식 셋 모두 순번 겹침, 유실 **0**(abort 후 순번을 되감지 않으면 빈자리). 경쟁에서는 **InitProducerId를 나중에 처리받은 쪽이 이겨** 재기동한 이전 writer가 lease를 가진 writer를 109 / 200번 막음. 처음 가설 그대로이면 lease 없는 성공 응답 124건, lease를 가진 writer가 멈춘 채 끝남 31번 |
 
-Q1부터 Q5와 Q8의 출력 발췌는 [results/raw/](results/raw/) 의 테스트 출력에서, Q5 반복 측정과 Q6, Q7, Q8의 표는 [results/data/](results/data/) 의 CSV에서 옮겼습니다.
+Q1부터 Q5, Q8, Q9의 출력 발췌는 [results/raw/](results/raw/) 의 테스트 출력에서, Q5 반복 측정과 Q6부터 Q9의 표는 [results/data/](results/data/) 의 CSV에서 옮겼습니다.
 
 ## Findings
 
@@ -40,6 +42,8 @@ Q1부터 Q5와 Q8의 출력 발췌는 [results/raw/](results/raw/) 의 테스트
 4. **저장소에서 lease 테이블과 비교하지 않음.** 이 구성에 lease 테이블과 비교하는 세대 검사를 더하면, lease 교체 뒤 새 writer의 `initTransactions()` 전에 정상 커밋된 레코드를 거부해 성공 응답한 메시지가 사라졌습니다(교체 168번에서 336건 모두). 브로커는 lease 교체를 모르므로 그 커밋은 정상이고, 새 writer는 replay로 그것을 보고 이어 가므로 그 자리가 빕니다. 유일 키와 `ON CONFLICT` 만 둔 저장소는 교체 600번에서 순번 겹침과 유실이 0이었습니다(Q8).
 
 비용은 전달 지연이 커밋 주기만큼 늘어나는 것(p99가 커밋 주기와 거의 같음)과, 교체 공백의 대부분을 차지하는 `initTransactions()` 의 재시도 대기(`retry.backoff.ms`)입니다. 트랜잭션당 1건 설정에서 드물게 `InvalidTxnStateException` 으로 producer가 fatal 상태가 됐고, 원인은 찾지 못했습니다(Q6). 새 writer의 init이 끝나기 전에 이전 writer가 커밋하면 막힐 때의 예외가 `ProducerFencedException` 이 아니라 `InvalidTxnStateException` 이므로, writer는 둘 다 "교체됨"으로 다뤄야 합니다(Q8, 원인 확인).
+
+writer의 트랜잭션이 후임 없이 `transaction.timeout.ms` 로 중단되는 경우에도 브로커의 처리는 같은 규칙을 따랐습니다. 깨어나 곧바로 커밋하면 `InvalidTxnStateException` 으로 producer가 fatal이 되므로 새 producer로 다시 기동해야 하고, 그 기동(`initTransactions()`, replay)은 순번 겹침과 유실 없이 이어 썼습니다. 다만 `initTransactions()` 는 이어서 쓰기가 아니라 인수라서, lease 확인과 init 사이에 lease가 넘어가면 재기동한 이전 writer가 lease를 가진 writer를 막았습니다(200번 중 109번, 조정자의 InitProducerId 처리 순서와 정확히 일치). 로그의 순번은 깨지지 않았지만, init 뒤 lease를 다시 확인하지 않으면 lease 없는 writer가 성공 응답을 이어 갔고, `ProducerFencedException` 을 "lease를 잃음"으로 보고 멈추면 lease를 가진 writer가 멈춘 채 남았습니다. 둘 다 처리해도 lease를 가진 writer의 트랜잭션 하나는 실패했습니다. `transaction.timeout.ms` 가 지난 뒤에도 조정자의 만료 검사 전이면 커밋은 성공했으므로, 시간 초과를 이유로 미리 실패를 응답하면 안 됩니다(Q9).
 
 대화가 많을 때의 비용은 커밋 수입니다. 보낸 것이 없는 트랜잭션은 커밋 요청을 보내지 않으므로 커밋 수는 도착이 정합니다(초당 57건, 주기 10ms에서 producer당 초당 27~30번). 한 브로커에서 producer 256개, 10ms에서 `commitTransaction()` p50이 33~36ms로 커졌고, 1,024개에서는 커밋 주기와 관계없이 커밋이 초당 약 850~1,350번에 머물러 트랜잭션당 레코드가 38~68건으로 불어나고 수락 p50이 1.1~2.3초가 됐습니다. 클라이언트와 브로커가 같은 VM CPU를 나눠 쓰다 포화된 상태라 브로커의 한계라고 할 수는 없고 경향으로만 씁니다(Q8).
 
@@ -64,13 +68,13 @@ export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 ```
 
-Q1부터 Q5와 Q8의 테스트(34개)는 다음 명령 하나로 돕니다. Q1부터 Q4의 결과를 만든 실행은 1분 56초, `Q5LeaseRaceTest.c5` 에 `LOG_ORDER` 계열을 더한 코드의 실행은 3분 15초, Q8 테스트를 더한 지금 코드의 실행은 4분 5초가 걸렸습니다.
+Q1부터 Q5, Q8, Q9의 테스트(42개)는 다음 명령 하나로 돕니다. Q1부터 Q4의 결과를 만든 실행은 1분 56초, `Q5LeaseRaceTest.c5` 에 `LOG_ORDER` 계열을 더한 코드의 실행은 3분 15초, Q8 테스트를 더한 코드의 실행은 4분 5초, Q9 테스트를 더한 지금 코드의 실행은 9분 55초(같은 VM의 다른 프로젝트 부하가 큰 상태)가 걸렸습니다.
 
 ```bash
 ./gradlew test
 ```
 
-테스트는 관찰 내용을 `build/lab-output/*.txt` 에 남깁니다. [results/raw/](results/raw/) 의 Q1부터 Q4 파일은 그 한 번의 실행을, Q5 파일은 `./gradlew test --tests 'lab.store.*'` 로 따로 돌린 실행을, Q8 파일은 4분 5초가 걸린 전체 실행을 그대로 복사한 것입니다.
+테스트는 관찰 내용을 `build/lab-output/*.txt` 에 남깁니다. [results/raw/](results/raw/) 의 Q1부터 Q4 파일은 그 한 번의 실행을, Q5 파일은 `./gradlew test --tests 'lab.store.*'` 로 따로 돌린 실행을, Q8 파일은 4분 5초가 걸린 전체 실행을, Q9 파일은 `./gradlew test --tests 'lab.kafka.Q9TimeoutRestartTest'` 로 따로 돌린 실행을 그대로 복사한 것입니다.
 
 Q5의 반복 측정과 Q6, Q7의 측정은 일반 테스트에서 빠져 있고, 클래스마다 따로 돌립니다.
 
@@ -87,6 +91,8 @@ Q5의 반복 측정과 Q6, Q7의 측정은 일반 테스트에서 빠져 있고,
 ./gradlew benchmark --tests 'lab.bench.Q8TakeoverSoakBenchmark'
 ./gradlew benchmark --tests 'lab.bench.Q8ConversationTxThroughputBenchmark'
 ./gradlew benchmark --tests 'lab.bench.Q8ProducerScaleBenchmark'
+./gradlew benchmark --tests 'lab.bench.Q9WakeTimingBenchmark'
+./gradlew benchmark --tests 'lab.bench.Q9RestartRaceBenchmark'
 ```
 
 `Q8ProducerScaleBenchmark` 는 producer를 호스트가 아니라 브로커와 같은 Docker 네트워크의 컨테이너에서 엽니다. colima에서 호스트 JVM이 producer 1,024개를 열자 포트 포워딩과 Docker 소켓 연결이 모두 끊겼기 때문입니다([Q8](results/Q8.md) (4)).
@@ -97,7 +103,7 @@ Q5의 반복 측정과 Q6, Q7의 측정은 일반 테스트에서 빠져 있고,
 
 - 브로커 한 대, 파티션 하나, 복제 없음. `acks=all` 이어도 ISR이 브로커 하나뿐입니다.
 - 로컬 노트북의 colima VM(CPU 4개, 메모리 8GB)에서 잰 값입니다. 측정 JVM은 VM 밖에서 돌고 컨테이너와 포트 포워딩으로 통신합니다.
-- 측정 중 같은 VM에 다른 프로젝트의 컨테이너(Kafka 브로커 하나, ClickHouse 하나)가 떠 있었고, 그 브로커가 가끔 CPU를 썼습니다. 부하는 [Q6](results/Q6.md) 의 각 절과 [Q7](results/Q7.md) 의 측정 조건에 기록했습니다. Q7 측정 중에는 호스트의 다른 프로그램 부하도 컸고, 그 뒤의 측정은 호스트 load average를 함께 남겼습니다. Q8 측정 중에는 호스트가 수 분씩 멈춘 적이 두 번 있어 그때의 실행을 버리고 다시 돌렸습니다.
+- 측정 중 같은 VM에 다른 프로젝트의 컨테이너(Kafka 브로커 하나, ClickHouse 하나)가 떠 있었고, 그 브로커가 가끔 CPU를 썼습니다. 부하는 [Q6](results/Q6.md) 의 각 절과 [Q7](results/Q7.md) 의 측정 조건에 기록했습니다. Q7 측정 중에는 호스트의 다른 프로그램 부하도 컸고, 그 뒤의 측정은 호스트 load average를 함께 남겼습니다. Q8 측정 중에는 호스트가 수 분씩 멈춘 적이 두 번 있어 그때의 실행을 버리고 다시 돌렸습니다. Q9 측정 중에는 다른 프로젝트의 Redis 컨테이너가 VM CPU를 평균 약 100%, 최대 약 300% 썼습니다.
 - 그래서 Q6, Q7의 수치는 절대값이 아니라 같은 환경에서의 상대 비교로만 씁니다.
 - 모든 결과는 `transaction.version=2`(KIP-890) 기준입니다.
 - 저장소는 PostgreSQL만 쟀습니다. wide-column 저장소의 조건부 쓰기 비용은 재지 않았습니다.

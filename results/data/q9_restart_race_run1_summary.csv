@@ -1,0 +1,13 @@
+policy,init_order,n,a_acked,a_acked_after_b_acquire,b_failed,a_restarts,b_restarts,b_stopped_while_owner,dup_seqs,gaps,acked_lost,failed_stored,log_order_rejected_acked
+check_after_init+fenced_checks_lease,a2_first,9,0,0,0,0,0,0,0,0,0,0,0
+check_after_init+fenced_checks_lease,b_first,14,0,0,14,0,14,0,0,0,0,0,0
+check_after_init+fenced_checks_lease,overlap,27,0,0,15,0,17,0,0,0,0,0,0
+check_after_init+fenced_stops,a2_first,14,0,0,0,0,0,0,0,0,0,0,0
+check_after_init+fenced_stops,b_first,9,0,0,9,0,0,9,0,0,0,0,0
+check_after_init+fenced_stops,overlap,27,0,0,15,0,0,15,0,0,0,0,0
+no_check_after_init+fenced_checks_lease,a2_first,11,0,0,0,0,0,0,0,0,0,0,0
+no_check_after_init+fenced_checks_lease,b_first,12,7,7,12,0,12,0,0,0,0,0,7
+no_check_after_init+fenced_checks_lease,overlap,27,16,16,7,0,10,0,0,0,0,0,16
+no_check_after_init+fenced_stops,a2_first,4,0,0,0,0,0,0,0,0,0,0,0
+no_check_after_init+fenced_stops,b_first,16,64,64,16,0,0,16,0,0,0,0,64
+no_check_after_init+fenced_stops,overlap,30,60,60,13,0,1,15,0,0,0,0,52

@@ -1,0 +1,284 @@
+
+=== Q9 f-race-nocheck: 경쟁, A2는 init 뒤 lease를 다시 확인하지 않음 ===
+  [설정] A transaction.timeout.ms=1500, 브로커 transaction.abort.timed.out.transaction.cleanup.interval.ms=500
+  [A lease 획득] epoch=5 TTL=60초
+  A initTransactions -> 성공 (122ms)
+  A begin -> 성공 (0ms)
+  A send(100) -> 성공 (21ms)
+  A commit(100) -> 성공 (13ms)
+  A begin -> 성공 (0ms)
+  A send(101, 102) flush -> 성공 (9ms)
+  [A 멈춤 직전 producerIdAndEpoch] (producerId=7, epoch=1)
+  [A 멈춤 직전 클라이언트 상태] IN_TRANSACTION
+  [멈춤 직후 조정자 상태] state=Ongoing producerId=7 producerEpoch=1 topicPartitions=[q9-f-race-nocheck-log-0]
+  [멈춤 직후 HW, LSO] 4, 2
+  [조정자 중단 확인까지] 1993ms (A의 flush 뒤부터)
+  [중단 뒤 조정자 상태] state=CompleteAbort producerId=7 producerEpoch=2 topicPartitions=[]
+  [중단 뒤 파티션 producer 상태] [producerId=7 producerEpoch=2 lastSequence=-1 currentTransactionStartOffset=OptionalLong.empty]
+  [중단 뒤 HW, LSO] 5, 5
+  [중단 뒤 A의 lease 유효] true
+  -- A 깨어남 --
+  A commitTransaction -> org.apache.kafka.common.errors.InvalidTxnStateException: The producer attempted a transactional operation in an invalid state. (3ms)
+  A close -> 성공 (3ms)
+  [A lease 확인(재기동 결정)] true
+  -- A2 생성, init 전에 멈춤(재기동이 늦어짐) --
+  [A lease 만료, B lease 획득] epoch=6
+  B initTransactions -> 성공 (171ms)
+  [B producerIdAndEpoch] (producerId=7, epoch=3)
+  B 교체 표시 커밋 -> 성공 (49ms)
+  [B replay(read_committed)] lastSeq=100
+  B begin -> 성공 (0ms)
+  B send(101..102) -> 성공 (9ms)
+  B commit -> 성공 (4ms)
+  [B 클라이언트 상태] READY
+  -- A2 깨어나 init --
+  A2 initTransactions -> 성공 (119ms)
+  [A2 producerIdAndEpoch] (producerId=7, epoch=6)
+  [A2 init 뒤 조정자 상태] state=Empty producerId=7 producerEpoch=6 topicPartitions=[]
+  [A2 replay(read_committed)] lastSeq=102
+  A2 begin -> 성공 (0ms)
+  A2 send(103..104) -> 성공 (9ms)
+  A2 commit -> 성공 (6ms)
+  [A2 클라이언트 상태] READY
+  -- B의 다음 트랜잭션 --
+  B begin -> 성공 (0ms)
+  B send(103) -> org.apache.kafka.common.errors.InvalidProducerEpochException: Producer attempted to produce with an old epoch. (4ms)
+  [B 클라이언트 상태] ABORTABLE_ERROR lastError=InvalidProducerEpochException
+  B abortTransaction -> org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. (7ms)
+  [B 클라이언트 상태] FATAL_ERROR lastError=ProducerFencedException
+  [B lease 유효(처음 가설의 처리는 확인하지 않고 멈춤)] true
+  -- A2의 다음 트랜잭션 --
+  A2 begin -> 성공 (0ms)
+  A2 send(105) -> 성공 (6ms)
+  A2 commit -> 성공 (3ms)
+  [A2 클라이언트 상태] READY
+  [A2 lease 유효(A2는 확인하지 않음)] false
+  [마지막 조정자 상태] state=CompleteCommit producerId=7 producerEpoch=8 topicPartitions=[]
+  [마지막 lease] epoch=6
+  -- read_committed 로그
+     seq=100 epoch=5 body=A-100#1
+     MARKER epoch=6
+     seq=101 epoch=6 body=B-101#1
+     seq=102 epoch=6 body=B-102#2
+     seq=103 epoch=5 body=A2-103#1
+     seq=104 epoch=5 body=A2-104#2
+     seq=105 epoch=5 body=A2-105#3
+  -- read_uncommitted 로그
+     seq=100 epoch=5 body=A-100#1
+     seq=101 epoch=5 body=A-101#2
+     seq=102 epoch=5 body=A-102#3
+     MARKER epoch=6
+     seq=101 epoch=6 body=B-101#1
+     seq=102 epoch=6 body=B-102#2
+     seq=103 epoch=5 body=A2-103#1
+     seq=104 epoch=5 body=A2-104#2
+     seq=105 epoch=5 body=A2-105#3
+  A 브로커 ack=[A-100#1, A-101#2, A-102#3] 성공 응답=[A-100#1] 실패 응답=[A-101#2, A-102#3]
+  A2 브로커 ack=[A2-103#1, A2-104#2, A2-105#3] 성공 응답=[A2-103#1, A2-104#2, A2-105#3] 실패 응답=[]
+  B 브로커 ack=[B-101#1, B-102#2] 성공 응답=[B-101#1, B-102#2] 실패 응답=[B-103#3]
+  [판정] 순번 겹침=[] 빈자리=[] 성공 응답 유실=[] 실패 응답 저장=[] 브로커 ack 뒤 중단=[A-101#2, A-102#3] LOG_ORDER였다면 거부될 성공 응답=[A2-103#1, A2-104#2, A2-105#3] 로그의 담당자 순서=[A, MARKER(e6), B, A2]
+  kafka-dump-log 요약:
+    baseOffset=0 lastOffset=0 baseSequence=0 lastSequence=0 producerId=7 producerEpoch=0 isTransactional=true isControl=false
+        | offset=0 sequence=0 payload: A-100#1
+    baseOffset=1 lastOffset=1 baseSequence=-1 lastSequence=-1 producerId=7 producerEpoch=1 isTransactional=true isControl=true
+        | offset=1 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=2 lastOffset=3 baseSequence=0 lastSequence=1 producerId=7 producerEpoch=1 isTransactional=true isControl=false
+        | offset=2 sequence=0 payload: A-101#2
+        | offset=3 sequence=1 payload: A-102#3
+    baseOffset=4 lastOffset=4 baseSequence=-1 lastSequence=-1 producerId=7 producerEpoch=2 isTransactional=true isControl=true
+        | offset=4 sequence=-1 endTxnMarker: ABORT coordinatorEpoch: 0
+    baseOffset=5 lastOffset=5 baseSequence=0 lastSequence=0 producerId=7 producerEpoch=3 isTransactional=true isControl=false
+        | offset=5 sequence=0 payload: 
+    baseOffset=6 lastOffset=6 baseSequence=-1 lastSequence=-1 producerId=7 producerEpoch=4 isTransactional=true isControl=true
+        | offset=6 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=7 lastOffset=8 baseSequence=0 lastSequence=1 producerId=7 producerEpoch=4 isTransactional=true isControl=false
+        | offset=7 sequence=0 payload: B-101#1
+        | offset=8 sequence=1 payload: B-102#2
+    baseOffset=9 lastOffset=9 baseSequence=-1 lastSequence=-1 producerId=7 producerEpoch=5 isTransactional=true isControl=true
+        | offset=9 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=10 lastOffset=11 baseSequence=0 lastSequence=1 producerId=7 producerEpoch=6 isTransactional=true isControl=false
+        | offset=10 sequence=0 payload: A2-103#1
+        | offset=11 sequence=1 payload: A2-104#2
+    baseOffset=12 lastOffset=12 baseSequence=-1 lastSequence=-1 producerId=7 producerEpoch=7 isTransactional=true isControl=true
+        | offset=12 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=13 lastOffset=13 baseSequence=0 lastSequence=0 producerId=7 producerEpoch=7 isTransactional=true isControl=false
+        | offset=13 sequence=0 payload: A2-105#3
+    baseOffset=14 lastOffset=14 baseSequence=-1 lastSequence=-1 producerId=7 producerEpoch=8 isTransactional=true isControl=true
+        | offset=14 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+  브로커 요청 로그 ([INIT_PRODUCER_ID, PRODUCE, ADD_PARTITIONS_TO_TXN, END_TXN, WRITE_TXN_MARKERS]):
+    2026-10-05 06:13:09,424 INIT_PRODUCER_ID v5 clientId=A@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","transactionTimeoutMs":1500,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":0}
+    2026-10-05 06:13:09,442 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":0,"verifyOnly":false,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-f-race-nocheck","topicResults":[{"name":"q9-f-race-nocheck-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:13:09,446 PRODUCE v13 clientId=A@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionData":[{"index":0,"recordsSizeInBytes":113}]}]}
+      response={"responses":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":0,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:09,453 END_TXN v5 clientId=A@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":0,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":1}
+    2026-10-05 06:13:09,455 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":7,"producerEpoch":1,"transactionResult":true,"topics":[{"name":"q9-f-race-nocheck-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":7,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-10-05 06:13:09,468 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":1,"verifyOnly":false,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-f-race-nocheck","topicResults":[{"name":"q9-f-race-nocheck-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:13:09,470 PRODUCE v13 clientId=A@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionData":[{"index":0,"recordsSizeInBytes":165}]}]}
+      response={"responses":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":2,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:11,337 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":7,"producerEpoch":2,"transactionResult":false,"topics":[{"name":"q9-f-race-nocheck-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":7,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-10-05 06:13:11,666 END_TXN v5 clientId=A@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":1,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":48,"producerId":-1,"producerEpoch":-1}
+    2026-10-05 06:13:11,867 INIT_PRODUCER_ID v5 clientId=B@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","transactionTimeoutMs":1500,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":3}
+    2026-10-05 06:13:11,916 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":3,"verifyOnly":false,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-f-race-nocheck","topicResults":[{"name":"q9-f-race-nocheck-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:13:11,918 PRODUCE v13 clientId=B@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionData":[{"index":0,"recordsSizeInBytes":114}]}]}
+      response={"responses":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":5,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:11,926 END_TXN v5 clientId=B@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":3,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":4}
+    2026-10-05 06:13:11,930 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":7,"producerEpoch":4,"transactionResult":true,"topics":[{"name":"q9-f-race-nocheck-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":7,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-10-05 06:13:12,550 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":4,"verifyOnly":false,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-f-race-nocheck","topicResults":[{"name":"q9-f-race-nocheck-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:13:12,551 PRODUCE v13 clientId=B@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionData":[{"index":0,"recordsSizeInBytes":165}]}]}
+      response={"responses":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":7,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:12,556 END_TXN v5 clientId=B@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":4,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":5}
+    2026-10-05 06:13:12,558 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":7,"producerEpoch":5,"transactionResult":true,"topics":[{"name":"q9-f-race-nocheck-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":7,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-10-05 06:13:12,676 INIT_PRODUCER_ID v5 clientId=A2@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","transactionTimeoutMs":1500,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":6}
+    2026-10-05 06:13:13,238 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":6,"verifyOnly":false,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-f-race-nocheck","topicResults":[{"name":"q9-f-race-nocheck-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:13:13,240 PRODUCE v13 clientId=A2@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionData":[{"index":0,"recordsSizeInBytes":167}]}]}
+      response={"responses":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":10,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:13,246 END_TXN v5 clientId=A2@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":6,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":7}
+    2026-10-05 06:13:13,248 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":7,"producerEpoch":7,"transactionResult":true,"topics":[{"name":"q9-f-race-nocheck-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":7,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-10-05 06:13:13,250 PRODUCE v13 clientId=B@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionData":[{"index":0,"recordsSizeInBytes":113}]}]}
+      response={"responses":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionResponses":[{"index":0,"errorCode":47,"baseOffset":-1,"logAppendTimeMs":-1,"logStartOffset":-1,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:13,257 END_TXN v5 clientId=B@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":5,"committed":false}
+      response={"throttleTimeMs":0,"errorCode":90,"producerId":-1,"producerEpoch":-1}
+    2026-10-05 06:13:13,270 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":7,"verifyOnly":false,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-f-race-nocheck","topicResults":[{"name":"q9-f-race-nocheck-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:13:13,272 PRODUCE v13 clientId=A2@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionData":[{"index":0,"recordsSizeInBytes":114}]}]}
+      response={"responses":[{"topicId":"IrdLd57XSVeVHN-SRORLKw","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":13,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:13,276 END_TXN v5 clientId=A2@q9-f-race-nocheck
+      request={"transactionalId":"q9-f-race-nocheck","producerId":7,"producerEpoch":7,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":7,"producerEpoch":8}
+    2026-10-05 06:13:13,277 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":7,"producerEpoch":8,"transactionResult":true,"topics":[{"name":"q9-f-race-nocheck-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":7,"topics":[{"name":"q9-f-race-nocheck-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+  브로커 로그 (q9-f-race-nocheck 또는 q9-f-race-nocheck-log 포함):
+    [2026-10-05 06:13:09,292] INFO [ReplicaFetcherManager on broker 1] Removed fetcher for partitions Set(q9-f-race-nocheck-log-0) (kafka.server.ReplicaFetcherManager)
+    [2026-10-05 06:13:09,295] INFO [LogLoader partition=q9-f-race-nocheck-log-0, dir=/tmp/kafka-logs] Loading producer state till offset 0 (org.apache.kafka.storage.internals.log.UnifiedLog)
+    [2026-10-05 06:13:09,296] INFO Created log for partition q9-f-race-nocheck-log-0 in /tmp/kafka-logs/q9-f-race-nocheck-log-0 with properties {} (kafka.log.LogManager)
+    [2026-10-05 06:13:09,296] INFO [Partition q9-f-race-nocheck-log-0 broker=1] No checkpointed highwatermark is found for partition q9-f-race-nocheck-log-0 (kafka.cluster.Partition)
+    [2026-10-05 06:13:09,296] INFO [Partition q9-f-race-nocheck-log-0 broker=1] Log loaded for partition q9-f-race-nocheck-log-0 with initial high watermark 0 (kafka.cluster.Partition)
+    [2026-10-05 06:13:09,421] DEBUG TransactionalId q9-f-race-nocheck prepare transition from EMPTY to EMPTY (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,423] DEBUG TransactionalId q9-f-race-nocheck complete transition from EMPTY to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180789421, clientTransactionVersion=TV_0] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,423] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180789421, clientTransactionVersion=TV_0] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:09,423] INFO [TransactionCoordinator id=1] Initialized transactionalId q9-f-race-nocheck with producerId 7 and producer epoch 0 on partition __transaction_state-21 (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:09,437] DEBUG TransactionalId q9-f-race-nocheck prepare transition from EMPTY to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,440] DEBUG TransactionalId q9-f-race-nocheck complete transition from EMPTY to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789437, txnLastUpdateTimestamp=1791180789437, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,440] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789437, txnLastUpdateTimestamp=1791180789437, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:09,449] DEBUG TransactionalId q9-f-race-nocheck prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,452] DEBUG TransactionalId q9-f-race-nocheck complete transition from ONGOING to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789437, txnLastUpdateTimestamp=1791180789449, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,452] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789437, txnLastUpdateTimestamp=1791180789449, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:09,452] DEBUG TransactionalId q9-f-race-nocheck prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,456] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180789455, latencyMs=2, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=26, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=7, topics=[WritableTxnMarkerTopicResult(name='q9-f-race-nocheck-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 26 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:09,456] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-f-race-nocheck's transaction markers for TransactionMetadata(transactionalId=q9-f-race-nocheck, producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1791180789437, txnLastUpdateTimestamp=1791180789449, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:09,457] DEBUG TransactionalId q9-f-race-nocheck complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180789437, txnLastUpdateTimestamp=1791180789452, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,457] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180789437, txnLastUpdateTimestamp=1791180789452, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:09,465] DEBUG TransactionalId q9-f-race-nocheck prepare transition from COMPLETE_COMMIT to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,466] DEBUG TransactionalId q9-f-race-nocheck complete transition from COMPLETE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789465, txnLastUpdateTimestamp=1791180789465, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:09,467] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789465, txnLastUpdateTimestamp=1791180789465, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:11,321] DEBUG TransactionalId q9-f-race-nocheck prepare transition from ONGOING to PREPARE_EPOCH_FENCE (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,321] DEBUG TransactionalId q9-f-race-nocheck prepare transition from ONGOING to PREPARE_ABORT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,327] DEBUG TransactionalId q9-f-race-nocheck complete transition from ONGOING to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=PREPARE_ABORT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789465, txnLastUpdateTimestamp=1791180791321, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,327] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=PREPARE_ABORT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180789465, txnLastUpdateTimestamp=1791180791321, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:11,327] DEBUG TransactionalId q9-f-race-nocheck prepare transition from PREPARE_ABORT to COMPLETE_ABORT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,327] INFO [TransactionCoordinator id=1] Completed rollback of ongoing transaction for transactionalId q9-f-race-nocheck due to timeout (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:11,338] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180791337, latencyMs=9, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=27, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=7, topics=[WritableTxnMarkerTopicResult(name='q9-f-race-nocheck-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 27 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:11,340] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-f-race-nocheck's transaction markers for TransactionMetadata(transactionalId=q9-f-race-nocheck, producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, state=PREPARE_ABORT, pendingState=Optional[COMPLETE_ABORT], topicPartitions=[], txnStartTimestamp=1791180789465, txnLastUpdateTimestamp=1791180791321, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:11,344] DEBUG TransactionalId q9-f-race-nocheck complete transition from PREPARE_ABORT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=COMPLETE_ABORT, topicPartitions=[], txnStartTimestamp=1791180789465, txnLastUpdateTimestamp=1791180791327, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,346] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=COMPLETE_ABORT, topicPartitions=[], txnStartTimestamp=1791180789465, txnLastUpdateTimestamp=1791180791327, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:11,665] WARN [TransactionCoordinator id=1] TransactionalId: q9-f-race-nocheck's state is COMPLETE_ABORT, but received transaction marker result to send: COMMIT (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:11,665] DEBUG [TransactionCoordinator id=1] Aborting append of COMMIT to transaction log with coordinator and returning INVALID_TXN_STATE error to client for q9-f-race-nocheck's EndTransaction request (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:11,865] DEBUG TransactionalId q9-f-race-nocheck prepare transition from COMPLETE_ABORT to EMPTY (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,867] DEBUG TransactionalId q9-f-race-nocheck complete transition from COMPLETE_ABORT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180791865, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,867] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180791865, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:11,867] INFO [TransactionCoordinator id=1] Initialized transactionalId q9-f-race-nocheck with producerId 7 and producer epoch 3 on partition __transaction_state-21 (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:11,914] DEBUG TransactionalId q9-f-race-nocheck prepare transition from EMPTY to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,915] DEBUG TransactionalId q9-f-race-nocheck complete transition from EMPTY to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180791914, txnLastUpdateTimestamp=1791180791914, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,916] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180791914, txnLastUpdateTimestamp=1791180791914, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:11,924] DEBUG TransactionalId q9-f-race-nocheck prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,925] DEBUG TransactionalId q9-f-race-nocheck complete transition from ONGOING to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180791914, txnLastUpdateTimestamp=1791180791924, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,925] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180791914, txnLastUpdateTimestamp=1791180791924, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:11,925] DEBUG TransactionalId q9-f-race-nocheck prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,930] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180791929, latencyMs=3, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=28, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=7, topics=[WritableTxnMarkerTopicResult(name='q9-f-race-nocheck-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 28 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:11,931] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-f-race-nocheck's transaction markers for TransactionMetadata(transactionalId=q9-f-race-nocheck, producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1791180791914, txnLastUpdateTimestamp=1791180791924, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:11,932] DEBUG TransactionalId q9-f-race-nocheck complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180791914, txnLastUpdateTimestamp=1791180791925, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:11,933] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180791914, txnLastUpdateTimestamp=1791180791925, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:12,548] DEBUG TransactionalId q9-f-race-nocheck prepare transition from COMPLETE_COMMIT to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,549] DEBUG TransactionalId q9-f-race-nocheck complete transition from COMPLETE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180792548, txnLastUpdateTimestamp=1791180792548, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,549] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180792548, txnLastUpdateTimestamp=1791180792548, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:12,553] DEBUG TransactionalId q9-f-race-nocheck prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,556] DEBUG TransactionalId q9-f-race-nocheck complete transition from ONGOING to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=5, lastProducerEpoch=4, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180792548, txnLastUpdateTimestamp=1791180792553, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,556] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=5, lastProducerEpoch=4, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180792548, txnLastUpdateTimestamp=1791180792553, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:12,556] DEBUG TransactionalId q9-f-race-nocheck prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,559] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180792558, latencyMs=2, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=29, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=7, topics=[WritableTxnMarkerTopicResult(name='q9-f-race-nocheck-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 29 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:12,559] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-f-race-nocheck's transaction markers for TransactionMetadata(transactionalId=q9-f-race-nocheck, producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=5, lastProducerEpoch=4, txnTimeoutMs=1500, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1791180792548, txnLastUpdateTimestamp=1791180792553, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:12,560] DEBUG TransactionalId q9-f-race-nocheck complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=5, lastProducerEpoch=4, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180792548, txnLastUpdateTimestamp=1791180792556, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,560] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=5, lastProducerEpoch=4, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180792548, txnLastUpdateTimestamp=1791180792556, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:12,673] DEBUG TransactionalId q9-f-race-nocheck prepare transition from COMPLETE_COMMIT to EMPTY (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,674] DEBUG TransactionalId q9-f-race-nocheck complete transition from COMPLETE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=6, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180792673, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:12,675] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=6, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180792673, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:12,675] INFO [TransactionCoordinator id=1] Initialized transactionalId q9-f-race-nocheck with producerId 7 and producer epoch 6 on partition __transaction_state-21 (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:13,237] DEBUG TransactionalId q9-f-race-nocheck prepare transition from EMPTY to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,238] DEBUG TransactionalId q9-f-race-nocheck complete transition from EMPTY to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=6, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793237, txnLastUpdateTimestamp=1791180793237, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,238] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=6, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793237, txnLastUpdateTimestamp=1791180793237, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:13,243] DEBUG TransactionalId q9-f-race-nocheck prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,245] DEBUG TransactionalId q9-f-race-nocheck complete transition from ONGOING to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=7, lastProducerEpoch=6, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793237, txnLastUpdateTimestamp=1791180793243, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,245] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=7, lastProducerEpoch=6, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793237, txnLastUpdateTimestamp=1791180793243, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:13,245] DEBUG TransactionalId q9-f-race-nocheck prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,248] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180793248, latencyMs=2, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=30, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=7, topics=[WritableTxnMarkerTopicResult(name='q9-f-race-nocheck-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 30 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:13,249] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-f-race-nocheck's transaction markers for TransactionMetadata(transactionalId=q9-f-race-nocheck, producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=7, lastProducerEpoch=6, txnTimeoutMs=1500, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1791180793237, txnLastUpdateTimestamp=1791180793243, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:13,250] DEBUG TransactionalId q9-f-race-nocheck complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=7, lastProducerEpoch=6, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180793237, txnLastUpdateTimestamp=1791180793245, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,250] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=7, lastProducerEpoch=6, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180793237, txnLastUpdateTimestamp=1791180793245, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:13,255] DEBUG [TransactionCoordinator id=1] Aborting append of ABORT to transaction log with coordinator and returning PRODUCER_FENCED error to client for q9-f-race-nocheck's EndTransaction request (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:13,269] DEBUG TransactionalId q9-f-race-nocheck prepare transition from COMPLETE_COMMIT to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,270] DEBUG TransactionalId q9-f-race-nocheck complete transition from COMPLETE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=7, lastProducerEpoch=6, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793269, txnLastUpdateTimestamp=1791180793269, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,270] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=7, lastProducerEpoch=6, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793269, txnLastUpdateTimestamp=1791180793269, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:13,274] DEBUG TransactionalId q9-f-race-nocheck prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,275] DEBUG TransactionalId q9-f-race-nocheck complete transition from ONGOING to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=8, lastProducerEpoch=7, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793269, txnLastUpdateTimestamp=1791180793274, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,275] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=8, lastProducerEpoch=7, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-f-race-nocheck-log-0], txnStartTimestamp=1791180793269, txnLastUpdateTimestamp=1791180793274, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:13,275] DEBUG TransactionalId q9-f-race-nocheck prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,277] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180793277, latencyMs=1, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=31, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=7, topics=[WritableTxnMarkerTopicResult(name='q9-f-race-nocheck-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 31 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:13,278] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-f-race-nocheck's transaction markers for TransactionMetadata(transactionalId=q9-f-race-nocheck, producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=8, lastProducerEpoch=7, txnTimeoutMs=1500, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1791180793269, txnLastUpdateTimestamp=1791180793274, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:13,278] DEBUG TransactionalId q9-f-race-nocheck complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=8, lastProducerEpoch=7, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180793269, txnLastUpdateTimestamp=1791180793275, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:13,278] DEBUG [Transaction State Manager 1]: Updating q9-f-race-nocheck's transaction state to TxnTransitMetadata[producerId=7, prevProducerId=7, nextProducerId=-1, producerEpoch=8, lastProducerEpoch=7, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180793269, txnLastUpdateTimestamp=1791180793275, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-f-race-nocheck succeeded (kafka.coordinator.transaction.TransactionStateManager)

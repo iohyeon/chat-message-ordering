@@ -78,6 +78,49 @@ public final class LeaseRepository {
         }
     }
 
+    /**
+     * Q9. 이 epoch의 lease가 아직 유효한가. epoch가 같고 만료 시각이 지나지 않았으면 참이다.
+     * 한 시점의 확인일 뿐이므로, 돌려준 직후에 만료될 수 있다.
+     */
+    public boolean isOwner(String conversationId, long epoch) throws SQLException {
+        try (Connection c = dataSource.getConnection();
+             var ps = c.prepareStatement(
+                     "SELECT 1 FROM conversation_owner WHERE conversation_id = ? AND epoch = ? AND expires_at > now()")) {
+            ps.setString(1, conversationId);
+            ps.setLong(2, epoch);
+            try (var rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    /** Q9 실험용. 이 epoch의 lease가 지금부터 {@code ttl} 뒤에 만료되게 한다. 담당자는 통보받지 않는다. */
+    public void expireIn(String conversationId, long epoch, Duration ttl) throws SQLException {
+        try (Connection c = dataSource.getConnection();
+             var ps = c.prepareStatement("""
+                     UPDATE conversation_owner SET expires_at = now() + (? * interval '1 millisecond')
+                      WHERE conversation_id = ? AND epoch = ?
+                     """)) {
+            ps.setLong(1, ttl.toMillis());
+            ps.setString(2, conversationId);
+            ps.setLong(3, epoch);
+            ps.executeUpdate();
+        }
+    }
+
+    /** Q9. 이 epoch의 lease를 스스로 놓는다(곧바로 만료). 이미 다른 epoch로 넘어갔으면 아무것도 바꾸지 않는다. */
+    public boolean release(String conversationId, long epoch) throws SQLException {
+        try (Connection c = dataSource.getConnection();
+             var ps = c.prepareStatement("""
+                     UPDATE conversation_owner SET expires_at = now() - interval '1 millisecond'
+                      WHERE conversation_id = ? AND epoch = ? AND expires_at > now()
+                     """)) {
+            ps.setString(1, conversationId);
+            ps.setLong(2, epoch);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
     public long currentEpoch(String conversationId) throws SQLException {
         try (Connection c = dataSource.getConnection();
              var ps = c.prepareStatement("SELECT epoch FROM conversation_owner WHERE conversation_id = ?")) {

@@ -86,6 +86,16 @@ public final class ShardProducer implements AutoCloseable {
 
     /** 클라이언트가 지금 들고 있는 producer ID와 epoch. 내부 필드라 리플렉션으로 읽는다. */
     public String producerIdAndEpoch() {
+        return producerIdAndEpoch(producer);
+    }
+
+    /** 클라이언트 TransactionManager의 현재 상태(READY, IN_TRANSACTION, ABORTABLE_ERROR, FATAL_ERROR 등). */
+    public String transactionState() {
+        return transactionState(producer);
+    }
+
+    /** {@link #producerIdAndEpoch()} 를 아무 producer에나 쓴다(Q9). */
+    public static String producerIdAndEpoch(KafkaProducer<?, ?> producer) {
         try {
             Field field = KafkaProducer.class.getDeclaredField("transactionManager");
             field.setAccessible(true);
@@ -101,8 +111,8 @@ public final class ShardProducer implements AutoCloseable {
         }
     }
 
-    /** 클라이언트 TransactionManager의 현재 상태(READY, IN_TRANSACTION, ABORTABLE_ERROR, FATAL_ERROR 등). */
-    public String transactionState() {
+    /** {@link #transactionState()} 를 아무 producer에나 쓴다(Q9). */
+    public static String transactionState(KafkaProducer<?, ?> producer) {
         try {
             Field field = KafkaProducer.class.getDeclaredField("transactionManager");
             field.setAccessible(true);

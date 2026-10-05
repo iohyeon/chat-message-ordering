@@ -1,0 +1,158 @@
+
+=== Q9 e-send-restart: W2 깨어나 send, (b) 새 producer로 재기동 ===
+  [설정] A transaction.timeout.ms=1500, 브로커 transaction.abort.timed.out.transaction.cleanup.interval.ms=500
+  [A lease 획득] epoch=5 TTL=60초
+  A initTransactions -> 성공 (118ms)
+  A begin -> 성공 (0ms)
+  A send(100) -> 성공 (12ms)
+  A commit(100) -> 성공 (6ms)
+  A begin -> 성공 (0ms)
+  A send(101, 102) flush -> 성공 (4ms)
+  [A 멈춤 직전 producerIdAndEpoch] (producerId=5, epoch=1)
+  [A 멈춤 직전 클라이언트 상태] IN_TRANSACTION
+  [멈춤 직후 조정자 상태] state=Ongoing producerId=5 producerEpoch=1 topicPartitions=[q9-e-send-restart-log-0]
+  [멈춤 직후 HW, LSO] 4, 2
+  [조정자 중단 확인까지] 1875ms (A의 flush 뒤부터)
+  [중단 뒤 조정자 상태] state=CompleteAbort producerId=5 producerEpoch=2 topicPartitions=[]
+  [중단 뒤 파티션 producer 상태] [producerId=5 producerEpoch=2 lastSequence=-1 currentTransactionStartOffset=OptionalLong.empty]
+  [중단 뒤 HW, LSO] 5, 5
+  [중단 뒤 A의 lease 유효] true
+  -- A 깨어남 --
+  A send(103) -> org.apache.kafka.common.errors.InvalidProducerEpochException: Producer attempted to produce with an old epoch. (4ms)
+  [A 클라이언트 상태] ABORTABLE_ERROR lastError=InvalidProducerEpochException
+  A commitTransaction -> org.apache.kafka.common.errors.InvalidProducerEpochException: Producer with transactionalId 'q9-e-send-restart' and (producerId=5, epoch=1) attempted to produce with an old epoch (0ms)
+  [A 클라이언트 상태] ABORTABLE_ERROR lastError=InvalidProducerEpochException
+  A close -> 성공 (2ms)
+  [A lease 확인] true
+  A2 initTransactions -> 성공 (114ms)
+  [A2 producerIdAndEpoch] (producerId=5, epoch=3)
+  [A2 replay(read_committed)] lastSeq=100 endOffset(=LSO)=5 읽은 레코드=1
+  A2 begin -> 성공 (0ms)
+  A2 send(101..102) -> 성공 (11ms)
+  A2 commit -> 성공 (12ms)
+  [A2 클라이언트 상태] READY
+  [마지막 조정자 상태] state=CompleteCommit producerId=5 producerEpoch=4 topicPartitions=[]
+  [마지막 lease] epoch=5
+  -- read_committed 로그
+     seq=100 epoch=5 body=A-100#1
+     seq=101 epoch=5 body=A2-101#1
+     seq=102 epoch=5 body=A2-102#2
+  -- read_uncommitted 로그
+     seq=100 epoch=5 body=A-100#1
+     seq=101 epoch=5 body=A-101#2
+     seq=102 epoch=5 body=A-102#3
+     seq=101 epoch=5 body=A2-101#1
+     seq=102 epoch=5 body=A2-102#2
+  A 브로커 ack=[A-100#1, A-101#2, A-102#3] 성공 응답=[A-100#1] 실패 응답=[A-101#2, A-102#3, A-103#4]
+  A2 브로커 ack=[A2-101#1, A2-102#2] 성공 응답=[A2-101#1, A2-102#2] 실패 응답=[]
+  [판정] 순번 겹침=[] 빈자리=[] 성공 응답 유실=[] 실패 응답 저장=[] 브로커 ack 뒤 중단=[A-101#2, A-102#3] LOG_ORDER였다면 거부될 성공 응답=[] 로그의 담당자 순서=[A, A2]
+  kafka-dump-log 요약:
+    baseOffset=0 lastOffset=0 baseSequence=0 lastSequence=0 producerId=5 producerEpoch=0 isTransactional=true isControl=false
+        | offset=0 sequence=0 payload: A-100#1
+    baseOffset=1 lastOffset=1 baseSequence=-1 lastSequence=-1 producerId=5 producerEpoch=1 isTransactional=true isControl=true
+        | offset=1 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+    baseOffset=2 lastOffset=3 baseSequence=0 lastSequence=1 producerId=5 producerEpoch=1 isTransactional=true isControl=false
+        | offset=2 sequence=0 payload: A-101#2
+        | offset=3 sequence=1 payload: A-102#3
+    baseOffset=4 lastOffset=4 baseSequence=-1 lastSequence=-1 producerId=5 producerEpoch=2 isTransactional=true isControl=true
+        | offset=4 sequence=-1 endTxnMarker: ABORT coordinatorEpoch: 0
+    baseOffset=5 lastOffset=6 baseSequence=0 lastSequence=1 producerId=5 producerEpoch=3 isTransactional=true isControl=false
+        | offset=5 sequence=0 payload: A2-101#1
+        | offset=6 sequence=1 payload: A2-102#2
+    baseOffset=7 lastOffset=7 baseSequence=-1 lastSequence=-1 producerId=5 producerEpoch=4 isTransactional=true isControl=true
+        | offset=7 sequence=-1 endTxnMarker: COMMIT coordinatorEpoch: 0
+  브로커 요청 로그 ([INIT_PRODUCER_ID, PRODUCE, ADD_PARTITIONS_TO_TXN, END_TXN, WRITE_TXN_MARKERS]):
+    2026-10-05 06:12:59,093 INIT_PRODUCER_ID v5 clientId=A@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","transactionTimeoutMs":1500,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":5,"producerEpoch":0}
+    2026-10-05 06:12:59,103 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-e-send-restart","producerId":5,"producerEpoch":0,"verifyOnly":false,"topics":[{"name":"q9-e-send-restart-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-e-send-restart","topicResults":[{"name":"q9-e-send-restart-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:12:59,105 PRODUCE v13 clientId=A@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionData":[{"index":0,"recordsSizeInBytes":113}]}]}
+      response={"responses":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":0,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:12:59,112 END_TXN v5 clientId=A@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","producerId":5,"producerEpoch":0,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":5,"producerEpoch":1}
+    2026-10-05 06:12:59,114 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":5,"producerEpoch":1,"transactionResult":true,"topics":[{"name":"q9-e-send-restart-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":5,"topics":[{"name":"q9-e-send-restart-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-10-05 06:12:59,117 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-e-send-restart","producerId":5,"producerEpoch":1,"verifyOnly":false,"topics":[{"name":"q9-e-send-restart-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-e-send-restart","topicResults":[{"name":"q9-e-send-restart-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:12:59,118 PRODUCE v13 clientId=A@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionData":[{"index":0,"recordsSizeInBytes":165}]}]}
+      response={"responses":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":2,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:00,961 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":5,"producerEpoch":2,"transactionResult":false,"topics":[{"name":"q9-e-send-restart-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":5,"topics":[{"name":"q9-e-send-restart-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+    2026-10-05 06:13:01,040 PRODUCE v13 clientId=A@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionData":[{"index":0,"recordsSizeInBytes":113}]}]}
+      response={"responses":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionResponses":[{"index":0,"errorCode":47,"baseOffset":-1,"logAppendTimeMs":-1,"logStartOffset":-1,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:01,042 END_TXN v5 clientId=A@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","producerId":5,"producerEpoch":1,"committed":false}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":5,"producerEpoch":2}
+    2026-10-05 06:13:01,161 INIT_PRODUCER_ID v5 clientId=A2@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","transactionTimeoutMs":1500,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":5,"producerEpoch":3}
+    2026-10-05 06:13:01,725 ADD_PARTITIONS_TO_TXN v5 clientId=AddPartitionsManager-client-1
+      request={"transactions":[{"transactionalId":"q9-e-send-restart","producerId":5,"producerEpoch":3,"verifyOnly":false,"topics":[{"name":"q9-e-send-restart-log","partitions":[0]}]}]}
+      response={"throttleTimeMs":0,"errorCode":0,"resultsByTransaction":[{"transactionalId":"q9-e-send-restart","topicResults":[{"name":"q9-e-send-restart-log","resultsByPartition":[{"partitionIndex":0,"partitionErrorCode":0}]}]}]}
+    2026-10-05 06:13:01,727 PRODUCE v13 clientId=A2@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","acks":-1,"timeoutMs":30000,"topicData":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionData":[{"index":0,"recordsSizeInBytes":167}]}]}
+      response={"responses":[{"topicId":"pdBBJ0z8RP-b2QfnSSfSXg","partitionResponses":[{"index":0,"errorCode":0,"baseOffset":5,"logAppendTimeMs":-1,"logStartOffset":0,"recordErrors":[],"errorMessage":null}]}],"throttleTimeMs":0}
+    2026-10-05 06:13:01,732 END_TXN v5 clientId=A2@q9-e-send-restart
+      request={"transactionalId":"q9-e-send-restart","producerId":5,"producerEpoch":3,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":5,"producerEpoch":4}
+    2026-10-05 06:13:01,735 WRITE_TXN_MARKERS v2 clientId=broker-1-txn-marker-sender
+      request={"markers":[{"producerId":5,"producerEpoch":4,"transactionResult":true,"topics":[{"name":"q9-e-send-restart-log","partitionIndexes":[0]}],"coordinatorEpoch":0,"transactionVersion":2}]}
+      response={"markers":[{"producerId":5,"topics":[{"name":"q9-e-send-restart-log","partitions":[{"partitionIndex":0,"errorCode":0}]}]}]}
+  브로커 로그 (q9-e-send-restart 또는 q9-e-send-restart-log 포함):
+    [2026-10-05 06:12:58,963] INFO [ReplicaFetcherManager on broker 1] Removed fetcher for partitions Set(q9-e-send-restart-log-0) (kafka.server.ReplicaFetcherManager)
+    [2026-10-05 06:12:58,965] INFO [LogLoader partition=q9-e-send-restart-log-0, dir=/tmp/kafka-logs] Loading producer state till offset 0 (org.apache.kafka.storage.internals.log.UnifiedLog)
+    [2026-10-05 06:12:58,966] INFO Created log for partition q9-e-send-restart-log-0 in /tmp/kafka-logs/q9-e-send-restart-log-0 with properties {} (kafka.log.LogManager)
+    [2026-10-05 06:12:58,966] INFO [Partition q9-e-send-restart-log-0 broker=1] No checkpointed highwatermark is found for partition q9-e-send-restart-log-0 (kafka.cluster.Partition)
+    [2026-10-05 06:12:58,966] INFO [Partition q9-e-send-restart-log-0 broker=1] Log loaded for partition q9-e-send-restart-log-0 with initial high watermark 0 (kafka.cluster.Partition)
+    [2026-10-05 06:12:59,087] DEBUG TransactionalId q9-e-send-restart prepare transition from EMPTY to EMPTY (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,089] DEBUG TransactionalId q9-e-send-restart complete transition from EMPTY to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180779087, clientTransactionVersion=TV_0] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,092] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180779087, clientTransactionVersion=TV_0] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:12:59,092] INFO [TransactionCoordinator id=1] Initialized transactionalId q9-e-send-restart with producerId 5 and producer epoch 0 on partition __transaction_state-5 (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:12:59,101] DEBUG TransactionalId q9-e-send-restart prepare transition from EMPTY to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,102] DEBUG TransactionalId q9-e-send-restart complete transition from EMPTY to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779101, txnLastUpdateTimestamp=1791180779101, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,103] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=0, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779101, txnLastUpdateTimestamp=1791180779101, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:12:59,108] DEBUG TransactionalId q9-e-send-restart prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,112] DEBUG TransactionalId q9-e-send-restart complete transition from ONGOING to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779101, txnLastUpdateTimestamp=1791180779108, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,112] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779101, txnLastUpdateTimestamp=1791180779108, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:12:59,112] DEBUG TransactionalId q9-e-send-restart prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,114] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180779114, latencyMs=2, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=20, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=5, topics=[WritableTxnMarkerTopicResult(name='q9-e-send-restart-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 20 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:12:59,114] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-e-send-restart's transaction markers for TransactionMetadata(transactionalId=q9-e-send-restart, producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1791180779101, txnLastUpdateTimestamp=1791180779108, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:12:59,115] DEBUG TransactionalId q9-e-send-restart complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180779101, txnLastUpdateTimestamp=1791180779112, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,115] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180779101, txnLastUpdateTimestamp=1791180779112, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:12:59,116] DEBUG TransactionalId q9-e-send-restart prepare transition from COMPLETE_COMMIT to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,117] DEBUG TransactionalId q9-e-send-restart complete transition from COMPLETE_COMMIT to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779116, txnLastUpdateTimestamp=1791180779116, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:12:59,117] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=1, lastProducerEpoch=0, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779116, txnLastUpdateTimestamp=1791180779116, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:00,955] DEBUG TransactionalId q9-e-send-restart prepare transition from ONGOING to PREPARE_EPOCH_FENCE (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:00,956] DEBUG TransactionalId q9-e-send-restart prepare transition from ONGOING to PREPARE_ABORT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:00,957] DEBUG TransactionalId q9-e-send-restart complete transition from ONGOING to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=PREPARE_ABORT, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779116, txnLastUpdateTimestamp=1791180780956, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:00,958] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=PREPARE_ABORT, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180779116, txnLastUpdateTimestamp=1791180780956, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:00,958] DEBUG TransactionalId q9-e-send-restart prepare transition from PREPARE_ABORT to COMPLETE_ABORT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:00,958] INFO [TransactionCoordinator id=1] Completed rollback of ongoing transaction for transactionalId q9-e-send-restart due to timeout (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:00,961] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180780961, latencyMs=3, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=21, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=5, topics=[WritableTxnMarkerTopicResult(name='q9-e-send-restart-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 21 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:00,962] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-e-send-restart's transaction markers for TransactionMetadata(transactionalId=q9-e-send-restart, producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, state=PREPARE_ABORT, pendingState=Optional[COMPLETE_ABORT], topicPartitions=[], txnStartTimestamp=1791180779116, txnLastUpdateTimestamp=1791180780956, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:00,964] DEBUG TransactionalId q9-e-send-restart complete transition from PREPARE_ABORT to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=COMPLETE_ABORT, topicPartitions=[], txnStartTimestamp=1791180779116, txnLastUpdateTimestamp=1791180780958, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:00,964] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=2, lastProducerEpoch=1, txnTimeoutMs=1500, txnState=COMPLETE_ABORT, topicPartitions=[], txnStartTimestamp=1791180779116, txnLastUpdateTimestamp=1791180780958, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:01,158] DEBUG TransactionalId q9-e-send-restart prepare transition from COMPLETE_ABORT to EMPTY (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,160] DEBUG TransactionalId q9-e-send-restart complete transition from COMPLETE_ABORT to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180781158, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,161] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=EMPTY, topicPartitions=[], txnStartTimestamp=-1, txnLastUpdateTimestamp=1791180781158, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:01,161] INFO [TransactionCoordinator id=1] Initialized transactionalId q9-e-send-restart with producerId 5 and producer epoch 3 on partition __transaction_state-5 (kafka.coordinator.transaction.TransactionCoordinator)
+    [2026-10-05 06:13:01,723] DEBUG TransactionalId q9-e-send-restart prepare transition from EMPTY to ONGOING (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,725] DEBUG TransactionalId q9-e-send-restart complete transition from EMPTY to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180781723, txnLastUpdateTimestamp=1791180781723, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,725] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=3, lastProducerEpoch=-1, txnTimeoutMs=1500, txnState=ONGOING, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180781723, txnLastUpdateTimestamp=1791180781723, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:01,729] DEBUG TransactionalId q9-e-send-restart prepare transition from ONGOING to PREPARE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,731] DEBUG TransactionalId q9-e-send-restart complete transition from ONGOING to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180781723, txnLastUpdateTimestamp=1791180781729, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,731] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=PREPARE_COMMIT, topicPartitions=[q9-e-send-restart-log-0], txnStartTimestamp=1791180781723, txnLastUpdateTimestamp=1791180781729, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
+    [2026-10-05 06:13:01,731] DEBUG TransactionalId q9-e-send-restart prepare transition from PREPARE_COMMIT to COMPLETE_COMMIT (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,735] DEBUG [Transaction Marker Request Completion Handler 1]: Received WriteTxnMarker response ClientResponse(receivedTimeMs=1791180781735, latencyMs=3, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=WRITE_TXN_MARKERS, apiVersion=2, clientId=broker-1-txn-marker-sender, correlationId=22, headerVersion=2), responseBody=WriteTxnMarkersResponseData(markers=[WritableTxnMarkerResult(producerId=5, topics=[WritableTxnMarkerTopicResult(name='q9-e-send-restart-log', partitions=[WritableTxnMarkerPartitionResult(partitionIndex=0, errorCode=0)])])])) from node 1 with correlation id 22 (kafka.coordinator.transaction.TransactionMarkerRequestCompletionHandler)
+    [2026-10-05 06:13:01,736] DEBUG [Transaction Marker Channel Manager 1]: Sending q9-e-send-restart's transaction markers for TransactionMetadata(transactionalId=q9-e-send-restart, producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, state=PREPARE_COMMIT, pendingState=Optional[COMPLETE_COMMIT], topicPartitions=[], txnStartTimestamp=1791180781723, txnLastUpdateTimestamp=1791180781729, clientTransactionVersion=TV_2) with coordinator epoch 0 succeeded, trying to append complete transaction log now (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+    [2026-10-05 06:13:01,737] DEBUG TransactionalId q9-e-send-restart complete transition from PREPARE_COMMIT to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180781723, txnLastUpdateTimestamp=1791180781731, clientTransactionVersion=TV_2] (org.apache.kafka.coordinator.transaction.TransactionMetadata)
+    [2026-10-05 06:13:01,738] DEBUG [Transaction State Manager 1]: Updating q9-e-send-restart's transaction state to TxnTransitMetadata[producerId=5, prevProducerId=5, nextProducerId=-1, producerEpoch=4, lastProducerEpoch=3, txnTimeoutMs=1500, txnState=COMPLETE_COMMIT, topicPartitions=[], txnStartTimestamp=1791180781723, txnLastUpdateTimestamp=1791180781731, clientTransactionVersion=TV_2] with coordinator epoch 0 for q9-e-send-restart succeeded (kafka.coordinator.transaction.TransactionStateManager)
