@@ -1,0 +1,4 @@
+W(스키마 q8_lease_eq_for_share_cur): 뷰를 통한 FOR SHARE 삽입 행 수=1 (커밋 전)
+public.conversation_owner 테이블 수준 잠금(다른 백엔드): RowShareLock
+B: public.conversation_owner lease UPDATE(lock_timeout 500ms) -> SQLSTATE 55P03 ERROR: canceling statement due to lock timeout
+  위치: while updating tuple (0,10) in relation "conversation_owner"

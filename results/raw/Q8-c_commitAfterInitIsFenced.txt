@@ -1,0 +1,54 @@
+=== A의 커밋 시점: B의 initTransactions() 뒤 topic=q8-b2539049 conv=conv-b2539049 transactional.id=tx-conv-b2539049
+A lease epoch=5, initTransactions, seq 100 커밋
+  [A-100 커밋 뒤] HW=2 LSO=2
+-- 교체 전 처리(모든 워커)
+   LEASE_EQ/따라잡음                  [A-100(e5)->STORED]
+   LEASE_EQ_FOR_SHARE/따라잡음        [A-100(e5)->STORED]
+   LOG_ORDER/따라잡음                 [A-100(e5)->STORED]
+   PLAIN/따라잡음                     [A-100(e5)->STORED]
+   LEASE_EQ/밀림                    [A-100(e5)->STORED]
+   LEASE_EQ_FOR_SHARE/밀림          [A-100(e5)->STORED]
+   LOG_ORDER/밀림                   [A-100(e5)->STORED]
+   PLAIN/밀림                       [A-100(e5)->STORED]
+A: seq 101, 102 전송, flush(브로커 ack 받음), 커밋 전에 멈춤
+  [A 멈춤] HW=4 LSO=2
+lease 만료(A는 모름), B lease 획득 epoch=6, lease 테이블 epoch=6
+B initTransactions -> 성공 (225ms)
+A commitTransaction (101, 102) -> org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. (2ms), 사용자에게 실패 응답
+  [A 커밋 시도 뒤] HW=5 LSO=5
+-- A 커밋 시도 직후 처리(따라잡은 워커)
+   LEASE_EQ/따라잡음                  []
+   LEASE_EQ_FOR_SHARE/따라잡음        []
+   LOG_ORDER/따라잡음                 []
+   PLAIN/따라잡음                     []
+B: 교체 표시(epoch 6) 트랜잭션 커밋
+B replay(read_committed): lastSeq=100 endOffset(=LSO)=7 읽은 레코드=1
+B: seq 101, 102 커밋, 성공 응답
+A 좀비 전송(B 수락 뒤) -> org.apache.kafka.common.errors.ProducerFencedException: Producer with transactionalId 'tx-conv-b2539049' and (producerId=1, epoch=1) has been fenced by another producer with the same transactionalId
+  [끝] HW=10 LSO=10
+-- B 수락 뒤 처리(모든 워커)
+   LEASE_EQ/따라잡음                  [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+   LEASE_EQ_FOR_SHARE/따라잡음        [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+   LOG_ORDER/따라잡음                 [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+   PLAIN/따라잡음                     [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+   LEASE_EQ/밀림                    [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+   LEASE_EQ_FOR_SHARE/밀림          [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+   LOG_ORDER/밀림                   [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+   PLAIN/밀림                       [MARKER(e6), B-101(e6)->STORED, B-102(e6)->STORED]
+-- read_committed 로그
+   seq=100 epoch=5 body=A-100
+   MARKER epoch=6
+   seq=101 epoch=6 body=B-101
+   seq=102 epoch=6 body=B-102
+read_committed 로그에서 두 번 이상 나온 seq: {}
+A가 성공 응답한 것: [A-100], 실패 응답한 것: [A-101, A-102]
+B가 성공 응답한 것: [B-101, B-102]
+-- 워커별 message 테이블
+   LEASE_EQ/따라잡음                  저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0
+   LEASE_EQ_FOR_SHARE/따라잡음        저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0
+   LOG_ORDER/따라잡음                 저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0
+   PLAIN/따라잡음                     저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0
+   LEASE_EQ/밀림                    저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0
+   LEASE_EQ_FOR_SHARE/밀림          저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0
+   LOG_ORDER/밀림                   저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0
+   PLAIN/밀림                       저장된 seq=[100:A-100, 101:B-101, 102:B-102] 빈자리=[] A 성공 응답 미저장=[] A 실패 응답 저장=[] B 성공 응답 미저장=[] SLOT_TAKEN=0

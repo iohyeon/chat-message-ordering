@@ -19,7 +19,8 @@ import org.apache.kafka.common.serialization.StringDeserializer;
  */
 public final class StoreWorker implements AutoCloseable {
 
-    public record Processed(long offset, ChatRecord record, MessageStore.Outcome outcome) {
+    /** 처리 결과. {@code processedAtNanos} 는 그 레코드의 쓰기 문장(과 판정 조회)이 돌아온 시각({@code System.nanoTime()}). */
+    public record Processed(long offset, ChatRecord record, MessageStore.Outcome outcome, long processedAtNanos) {
     }
 
     private final KafkaConsumer<String, String> consumer;
@@ -28,13 +29,18 @@ public final class StoreWorker implements AutoCloseable {
     private final FenceMode mode;
 
     public StoreWorker(String bootstrap, String topic, DataSource dataSource, FenceMode mode) {
+        // Q5는 멱등 producer만 쓰므로 트랜잭션이 없다. 기본값 그대로 둔다는 것을 드러내려고 적는다.
+        this(bootstrap, topic, dataSource, mode, "read_uncommitted");
+    }
+
+    /** Q8: 브로커 fencing(트랜잭션 producer)과 함께 쓸 때는 {@code read_committed} 로 읽는다. */
+    public StoreWorker(String bootstrap, String topic, DataSource dataSource, FenceMode mode, String isolationLevel) {
         this.consumer = new KafkaConsumer<>(Map.of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap,
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
                 ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false,
-                // 멱등 producer만 쓰므로 트랜잭션이 없다. 기본값 그대로 둔다는 것을 드러내려고 적는다.
-                ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_uncommitted"));
+                ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel));
         this.tp = new TopicPartition(topic, 0);
         this.dataSource = dataSource;
         this.mode = mode;
@@ -42,7 +48,10 @@ public final class StoreWorker implements AutoCloseable {
         consumer.seekToBeginning(Set.of(tp));
     }
 
-    /** 지금 로그 끝까지 처리하고 처리 결과를 순서대로 돌려준다. */
+    /**
+     * 지금 로그 끝까지 처리하고 처리 결과를 순서대로 돌려준다. 끝은 호출 시점의 {@code endOffsets()} 이고,
+     * read_committed 소비자에게는 HW가 아니라 LSO다.
+     */
     public List<Processed> drainToEnd(Duration timeout) throws SQLException {
         long end = consumer.endOffsets(Set.of(tp)).get(tp);
         long deadline = System.nanoTime() + timeout.toNanos();
@@ -53,23 +62,47 @@ public final class StoreWorker implements AutoCloseable {
                 if (System.nanoTime() > deadline) {
                     throw new IllegalStateException("로그 끝(" + end + ")까지 읽지 못했다. position=" + consumer.position(tp));
                 }
-                for (var cr : consumer.poll(Duration.ofMillis(200))) {
-                    ChatRecord r = ChatRecord.from(cr);
-                    MessageStore.Outcome outcome;
-                    if (r.marker()) {
-                        if (mode.usesFence()) {
-                            MessageStore.bumpFence(c, r.conversationId(), r.epoch());
-                        }
-                        outcome = null;
-                    } else {
-                        int n = MessageStore.insert(c, mode, r);
-                        outcome = MessageStore.classify(c, mode, r, n);
-                    }
-                    out.add(new Processed(cr.offset(), r, outcome));
-                }
+                process(c, consumer.poll(Duration.ofMillis(200)), out);
             }
         }
         return out;
+    }
+
+    /** poll 한 번에 받은 레코드를 처리한다. 계속 따라가는 워커 스레드가 반복해서 부른다. */
+    public List<Processed> pollOnce(Duration timeout) throws SQLException {
+        var recs = consumer.poll(timeout);
+        List<Processed> out = new ArrayList<>();
+        if (recs.isEmpty()) {
+            return out;
+        }
+        try (Connection c = dataSource.getConnection()) {
+            c.setAutoCommit(true);
+            process(c, recs, out);
+        }
+        return out;
+    }
+
+    /** 지금까지 읽은 위치. */
+    public long position() {
+        return consumer.position(tp);
+    }
+
+    private void process(Connection c, Iterable<org.apache.kafka.clients.consumer.ConsumerRecord<String, String>> recs,
+                         List<Processed> out) throws SQLException {
+        for (var cr : recs) {
+            ChatRecord r = ChatRecord.from(cr);
+            MessageStore.Outcome outcome;
+            if (r.marker()) {
+                if (mode.usesFence()) {
+                    MessageStore.bumpFence(c, r.conversationId(), r.epoch());
+                }
+                outcome = null;
+            } else {
+                int n = MessageStore.insert(c, mode, r);
+                outcome = MessageStore.classify(c, mode, r, n);
+            }
+            out.add(new Processed(cr.offset(), r, outcome, System.nanoTime()));
+        }
     }
 
     @Override

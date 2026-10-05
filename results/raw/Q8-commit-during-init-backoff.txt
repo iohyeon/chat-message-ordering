@@ -1,0 +1,37 @@
+
+=== A의 커밋이 B의 initTransactions() 안(첫 InitProducerId의 abort 뒤, 재시도 전)에 도착 ===
+  A initTransactions -> 성공 (367ms)
+  A begin -> 성공 (0ms)
+  A send(101) Future.get() -> 성공 (23ms) offset=0
+  A send(101) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | A@q8-itx]
+  A producerIdAndEpoch=(producerId=0, epoch=0) 조정자: state=Ongoing producerId=0 producerEpoch=0 topicPartitions=[q8-itx-log-0]
+  [A 커밋 직전] 133ms 조정자: state=CompleteAbort producerEpoch=1 B init 끝남=false
+  A commitTransaction (101) -> org.apache.kafka.common.errors.InvalidTxnStateException: The producer attempted a transactional operation in an invalid state. (3ms)
+  B initTransactions -> 성공 (223ms)
+  B producerIdAndEpoch=(producerId=0, epoch=2) 조정자: state=Empty producerId=0 producerEpoch=2 topicPartitions=[]
+  A commitTransaction 다시 -> org.apache.kafka.common.KafkaException: Cannot execute transactional method because we are in an error state (0ms)
+      원인 체인: KafkaException(Cannot execute transactional method because we are in an error state) <- InvalidTxnStateException(The producer attempted a transactional operation in an invalid state.)
+  B begin -> 성공 (0ms)
+  B send(101) Future.get() -> 성공 (10ms) offset=2
+  B send(101) callback -> 성공 (0ms) [콜백 스레드=kafka-producer-network-thread | B@q8-itx]
+  B commit -> 성공 (2ms)
+  read_committed 결과: [seq=101 writer=B]
+  브로커 요청 로그:
+    2026-10-04 16:48:39,860 INIT_PRODUCER_ID v5 clientId=A@q8-itx
+      request={"transactionalId":"q8-itx","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":14,"producerId":-1,"producerEpoch":-1}
+    2026-10-04 16:48:39,988 INIT_PRODUCER_ID v5 clientId=A@q8-itx
+      request={"transactionalId":"q8-itx","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":0,"producerEpoch":0}
+    2026-10-04 16:48:40,135 INIT_PRODUCER_ID v5 clientId=B@q8-itx
+      request={"transactionalId":"q8-itx","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":51,"producerId":-1,"producerEpoch":-1}
+    2026-10-04 16:48:40,158 END_TXN v5 clientId=A@q8-itx
+      request={"transactionalId":"q8-itx","producerId":0,"producerEpoch":0,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":48,"producerId":-1,"producerEpoch":-1}
+    2026-10-04 16:48:40,244 INIT_PRODUCER_ID v5 clientId=B@q8-itx
+      request={"transactionalId":"q8-itx","transactionTimeoutMs":60000,"producerId":-1,"producerEpoch":-1}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":0,"producerEpoch":2}
+    2026-10-04 16:48:40,263 END_TXN v5 clientId=B@q8-itx
+      request={"transactionalId":"q8-itx","producerId":0,"producerEpoch":2,"committed":true}
+      response={"throttleTimeMs":0,"errorCode":0,"producerId":0,"producerEpoch":3}
